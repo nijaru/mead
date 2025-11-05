@@ -1,0 +1,15 @@
+[package]
+name = "mead-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+thiserror.workspace = true
+mp4parse.workspace = true
+rav1e.workspace = true
+tracing.workspace = true
