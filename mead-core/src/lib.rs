@@ -14,8 +14,12 @@
 pub mod container;
 pub mod codec;
 pub mod error;
+pub mod frame;
+pub mod io;
 
 pub use error::{Error, Result};
+pub use frame::{ArcFrame, Frame, PixelFormat, Plane};
+pub use io::MediaSource;
 
 /// Library version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

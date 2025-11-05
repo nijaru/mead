@@ -2,29 +2,29 @@
 
 pub mod av1;
 
-use crate::Result;
+use crate::{ArcFrame, Result};
 
 /// Trait for video decoders
 pub trait VideoDecoder {
     /// Decode a packet into a frame
-    fn decode(&mut self, data: &[u8]) -> Result<Option<Frame>>;
+    fn decode(&mut self, data: &[u8]) -> Result<Option<ArcFrame>>;
 }
 
-/// Trait for video encoders
+/// Trait for video encoders (send-receive pattern)
 pub trait VideoEncoder {
-    /// Encode a frame into packet data
-    fn encode(&mut self, frame: &Frame) -> Result<Vec<u8>>;
-}
+    /// Send a frame to the encoder (None signals end-of-stream)
+    fn send_frame(&mut self, frame: Option<ArcFrame>) -> Result<()>;
 
-/// A decoded video frame
-#[derive(Debug, Clone)]
-pub struct Frame {
-    /// Frame width
-    pub width: u32,
-    /// Frame height
-    pub height: u32,
-    /// Pixel data (planar YUV for now)
-    pub data: Vec<u8>,
-    /// Presentation timestamp
-    pub pts: Option<i64>,
+    /// Receive an encoded packet (None means encoder needs more frames)
+    fn receive_packet(&mut self) -> Result<Option<Vec<u8>>>;
+
+    /// Convenience method to flush all remaining packets
+    fn finish(&mut self) -> Result<Vec<Vec<u8>>> {
+        self.send_frame(None)?;
+        let mut packets = Vec::new();
+        while let Some(packet) = self.receive_packet()? {
+            packets.push(packet);
+        }
+        Ok(packets)
+    }
 }

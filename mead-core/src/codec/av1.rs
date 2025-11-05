@@ -1,7 +1,7 @@
 //! AV1 codec support using rav1e
 
-use crate::{Error, Result};
-use super::{Frame, VideoEncoder};
+use crate::{ArcFrame, Error, PixelFormat, Result};
+use super::VideoEncoder;
 use rav1e::prelude::*;
 
 /// AV1 encoder configuration
@@ -98,48 +98,96 @@ impl Av1Encoder {
 }
 
 impl VideoEncoder for Av1Encoder {
-    fn encode(&mut self, frame: &Frame) -> Result<Vec<u8>> {
-        if frame.width != self.width || frame.height != self.height {
-            return Err(Error::InvalidInput(format!(
-                "Frame dimensions {}x{} do not match encoder {}x{}",
-                frame.width, frame.height, self.width, self.height
-            )));
+    fn send_frame(&mut self, frame: Option<ArcFrame>) -> Result<()> {
+        match frame {
+            Some(arc_frame) => {
+                // Validate dimensions
+                if arc_frame.width() != self.width || arc_frame.height() != self.height {
+                    return Err(Error::InvalidInput(format!(
+                        "Frame dimensions {}x{} do not match encoder {}x{}",
+                        arc_frame.width(),
+                        arc_frame.height(),
+                        self.width,
+                        self.height
+                    )));
+                }
+
+                // Validate format
+                if arc_frame.format() != PixelFormat::Yuv420p {
+                    return Err(Error::InvalidInput(
+                        "AV1 encoder currently only supports YUV420p format".to_string()
+                    ));
+                }
+
+                // Create rav1e frame
+                let mut rav1e_frame = self.context.new_frame();
+
+                // Copy Y plane
+                let y_plane = arc_frame.plane_y().ok_or_else(|| {
+                    Error::InvalidInput("Frame missing Y plane".to_string())
+                })?;
+                let rav1e_y = &mut rav1e_frame.planes[0];
+                let y_stride = rav1e_y.cfg.stride;
+                let y_data = rav1e_y.data_origin_mut();
+
+                for y in 0..self.height as usize {
+                    let row_offset = y * y_stride;
+                    let row = y_plane.row(y);
+                    y_data[row_offset..row_offset + row.len()].copy_from_slice(row);
+                }
+
+                // Copy U plane
+                let u_plane = arc_frame.plane_u().ok_or_else(|| {
+                    Error::InvalidInput("Frame missing U plane".to_string())
+                })?;
+                let rav1e_u = &mut rav1e_frame.planes[1];
+                let u_stride = rav1e_u.cfg.stride;
+                let u_data = rav1e_u.data_origin_mut();
+
+                for y in 0..(self.height / 2) as usize {
+                    let row_offset = y * u_stride;
+                    let row = u_plane.row(y);
+                    u_data[row_offset..row_offset + row.len()].copy_from_slice(row);
+                }
+
+                // Copy V plane
+                let v_plane = arc_frame.plane_v().ok_or_else(|| {
+                    Error::InvalidInput("Frame missing V plane".to_string())
+                })?;
+                let rav1e_v = &mut rav1e_frame.planes[2];
+                let v_stride = rav1e_v.cfg.stride;
+                let v_data = rav1e_v.data_origin_mut();
+
+                for y in 0..(self.height / 2) as usize {
+                    let row_offset = y * v_stride;
+                    let row = v_plane.row(y);
+                    v_data[row_offset..row_offset + row.len()].copy_from_slice(row);
+                }
+
+                // Send frame to encoder
+                self.context
+                    .send_frame(rav1e_frame)
+                    .map_err(|e| Error::Codec(format!("Failed to send frame: {:?}", e)))?;
+
+                Ok(())
+            }
+            None => {
+                // Signal end-of-stream
+                self.context.flush();
+                Ok(())
+            }
         }
+    }
 
-        let mut rav1e_frame = self.context.new_frame();
-
-        let y_size = (self.width * self.height) as usize;
-
-        if frame.data.len() < y_size {
-            return Err(Error::InvalidInput(
-                "Frame data too small for Y plane".to_string()
-            ));
-        }
-
-        let plane = &mut rav1e_frame.planes[0];
-        let stride = plane.cfg.stride;
-        let plane_data = plane.data_origin_mut();
-
-        for y in 0..self.height as usize {
-            let row_offset = y * stride;
-            let src_offset = y * self.width as usize;
-            let row_len = self.width as usize;
-            plane_data[row_offset..row_offset + row_len]
-                .copy_from_slice(&frame.data[src_offset..src_offset + row_len]);
-        }
-
-        self.context
-            .send_frame(rav1e_frame)
-            .map_err(|e| Error::Codec(format!("Failed to send frame: {:?}", e)))?;
-
+    fn receive_packet(&mut self) -> Result<Option<Vec<u8>>> {
         match self.context.receive_packet() {
-            Ok(packet) => Ok(packet.data.to_vec()),
+            Ok(packet) => Ok(Some(packet.data.to_vec())),
             Err(EncoderStatus::Encoded) => {
-                Ok(Vec::new())
+                // Encoder is processing, try again
+                self.receive_packet()
             }
-            Err(EncoderStatus::NeedMoreData) => {
-                Ok(Vec::new())
-            }
+            Err(EncoderStatus::NeedMoreData) => Ok(None),
+            Err(EncoderStatus::LimitReached) => Ok(None),
             Err(e) => Err(Error::Codec(format!("Encoder error: {:?}", e))),
         }
     }
@@ -148,6 +196,8 @@ impl VideoEncoder for Av1Encoder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Frame;
+    use std::sync::Arc;
 
     #[test]
     fn test_av1_encoder_creation() {
@@ -167,32 +217,41 @@ mod tests {
     }
 
     #[test]
-    fn test_av1_encode_frame() {
+    fn test_av1_send_receive() {
         let mut encoder = Av1Encoder::new(64, 64).unwrap();
 
-        let frame = Frame {
-            width: 64,
-            height: 64,
-            data: vec![128; 64 * 64],
-            pts: Some(0),
-        };
+        let frame = Arc::new(Frame::new(64, 64, PixelFormat::Yuv420p));
 
-        let result = encoder.encode(&frame);
+        // Send frame
+        let result = encoder.send_frame(Some(frame));
         assert!(result.is_ok());
+
+        // Try to receive (may or may not have packet yet)
+        let _ = encoder.receive_packet();
     }
 
     #[test]
-    fn test_av1_encode_wrong_dimensions() {
+    fn test_av1_wrong_dimensions() {
         let mut encoder = Av1Encoder::new(64, 64).unwrap();
 
-        let frame = Frame {
-            width: 32,
-            height: 32,
-            data: vec![128; 32 * 32],
-            pts: Some(0),
-        };
+        let frame = Arc::new(Frame::new(32, 32, PixelFormat::Yuv420p));
 
-        let result = encoder.encode(&frame);
+        let result = encoder.send_frame(Some(frame));
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_av1_finish() {
+        let mut encoder = Av1Encoder::new(64, 64).unwrap();
+
+        // Send a few frames
+        for _ in 0..3 {
+            let frame = Arc::new(Frame::new(64, 64, PixelFormat::Yuv420p));
+            encoder.send_frame(Some(frame)).unwrap();
+        }
+
+        // Finish encoding
+        let packets = encoder.finish().unwrap();
+        assert!(!packets.is_empty());
     }
 }

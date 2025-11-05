@@ -60,6 +60,31 @@
 **Decision**: [action]
 → Details: ai/research/topic.md
 
+## State-of-the-Art Rust Media API Design (2025-11-05)
+**Sources**:
+- symphonia (pure Rust audio library)
+- mp4parse-rust (Mozilla MP4 parser)
+- rav1e (Xiph AV1 encoder)
+- v_frame (video frame data structures)
+- rust-av ecosystem
+
+**Key Finding**: Modern Rust media libraries converge on these patterns:
+→ Details: ai/research/rust_media_api_design.md
+
+**Decisions for mead**:
+1. Use trait-based extensibility (FormatReader, Decoder, Encoder)
+2. Type-state pattern for decoder/encoder state machines
+3. Multiple buffer abstractions (zero-copy refs, owned, byte-oriented)
+4. MediaSource trait for I/O abstraction (seekable + non-seekable streams)
+5. Arc<Frame> for zero-copy frame sharing
+6. Iterator-based packet/frame reading
+7. Aligned memory for SIMD operations
+
+**Analysis**: Current implementation has 3 critical issues vs SOTA patterns
+→ Action plan: ai/REFACTORING_PLAN.md
+
+---
+
 ## Open Questions
 - [ ] Question needing research
 -->

@@ -1,21 +1,35 @@
 //! MP4 container support using mp4parse
+//!
+//! **Note**: Currently loads entire file for parsing (mp4parse limitation).
+//! Full streaming support with location-based references coming in Phase 2.
 
-use crate::{Error, Result};
+use crate::{Error, MediaSource, Result};
 use super::{Demuxer, Metadata, Packet};
-use std::io::Read;
 
 /// MP4 demuxer
+///
+/// **Current Limitation**: Loads entire file into memory for parsing.
+/// This is due to mp4parse API design. Phase 2 will implement box-by-box
+/// streaming with location references for constant memory usage.
 #[derive(Debug)]
-pub struct Mp4Demuxer {
+pub struct Mp4Demuxer<R: MediaSource> {
+    _source: R, // Will be used in Phase 2 for seeking to sample data
     context: mp4parse::MediaContext,
     metadata: Metadata,
 }
 
-impl Mp4Demuxer {
-    /// Create a new MP4 demuxer from a reader
-    pub fn new<R: Read>(mut reader: R) -> Result<Self> {
+impl<R: MediaSource> Mp4Demuxer<R> {
+    /// Create a new MP4 demuxer from a media source
+    ///
+    /// **Warning**: Currently loads entire file into memory.
+    /// Streaming support with constant memory usage coming in Phase 2.
+    pub fn new(mut source: R) -> Result<Self> {
+        tracing::warn!(
+            "MP4 demuxer currently loads entire file - streaming support planned for Phase 2"
+        );
+
         let mut buffer = Vec::new();
-        reader.read_to_end(&mut buffer)
+        std::io::Read::read_to_end(&mut source, &mut buffer)
             .map_err(Error::Io)?;
 
         let mut cursor = std::io::Cursor::new(&buffer);
@@ -39,6 +53,7 @@ impl Mp4Demuxer {
         };
 
         Ok(Self {
+            _source: source,
             context,
             metadata,
         })
@@ -50,7 +65,7 @@ impl Mp4Demuxer {
     }
 }
 
-impl Demuxer for Mp4Demuxer {
+impl<R: MediaSource> Demuxer for Mp4Demuxer<R> {
     fn read_packet(&mut self) -> Result<Option<Packet>> {
         // mp4parse provides structure parsing but not sample data extraction
         // Full implementation requires tracking sample table offsets and reading from file

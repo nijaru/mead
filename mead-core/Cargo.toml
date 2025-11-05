@@ -15,4 +15,5 @@ anyhow.workspace = true
 thiserror.workspace = true
 mp4parse.workspace = true
 rav1e.workspace = true
+aligned-vec.workspace = true
 tracing.workspace = true
