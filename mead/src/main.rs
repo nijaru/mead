@@ -75,13 +75,27 @@ fn main() -> Result<()> {
             }
 
             println!("\nTracks:");
-            for (i, track) in demuxer.tracks().iter().enumerate() {
-                println!("  Track {}: {:?}", i, track.track_type);
-                println!("    ID: {}", track.id);
-                if let Some(tkhd) = &track.tkhd {
-                    println!("    Disabled: {}", tkhd.disabled);
-                    println!("    Duration: {:?}", tkhd.duration);
-                    println!("    Dimensions: {}x{}", tkhd.width, tkhd.height);
+            for (track_id, track) in demuxer.tracks().iter() {
+                println!("  Track {}: {:?}", track_id, track.track_type());
+                println!("    Media Type: {:?}", track.media_type());
+                println!("    Language: {}", track.language());
+                println!("    Sample Count: {}", track.sample_count());
+
+                // Display codec-specific info
+                match track.track_type() {
+                    Ok(mp4::TrackType::Video) => {
+                        if let Ok(video_profile) = track.video_profile() {
+                            println!("    Video Profile: {:?}", video_profile);
+                        }
+                        println!("    Width: {}", track.width());
+                        println!("    Height: {}", track.height());
+                    }
+                    Ok(mp4::TrackType::Audio) => {
+                        if let Ok(audio_profile) = track.audio_profile() {
+                            println!("    Audio Profile: {:?}", audio_profile);
+                        }
+                    }
+                    _ => {}
                 }
             }
 

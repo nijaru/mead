@@ -22,7 +22,8 @@ anyhow = "1.0"
 thiserror = "2.0"
 
 # Media libraries (safe)
-mp4parse = "0.17"
+mp4parse = "0.17"  # Keeping for comparison during migration
+mp4 = "0.14"  # Primary MP4 library - supports streaming
 rav1e = "0.7"
 aligned-vec = "0.6"
 

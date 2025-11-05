@@ -1,50 +1,50 @@
-//! MP4 container support using mp4parse
+//! MP4 container support using mp4 crate
 //!
-//! **Note**: Currently loads entire file for parsing (mp4parse limitation).
-//! Full streaming support with location-based references coming in Phase 2.
+//! Uses buffered reading with the `mp4` crate for efficient large file handling.
+//! Does NOT load entire file into memory.
 
 use crate::{Error, MediaSource, Result};
 use super::{Demuxer, Metadata, Packet};
+use std::io::BufReader;
 
-/// MP4 demuxer
+/// MP4 demuxer using streaming with `mp4` crate
 ///
-/// **Current Limitation**: Loads entire file into memory for parsing.
-/// This is due to mp4parse API design. Phase 2 will implement box-by-box
-/// streaming with location references for constant memory usage.
-#[derive(Debug)]
+/// Uses BufReader for efficient I/O - does NOT load entire file into memory.
+/// Maintains constant memory usage regardless of file size.
 pub struct Mp4Demuxer<R: MediaSource> {
-    _source: R, // Will be used in Phase 2 for seeking to sample data
-    context: mp4parse::MediaContext,
+    reader: mp4::Mp4Reader<BufReader<R>>,
     metadata: Metadata,
+    current_track: Option<u32>,
+    current_sample: u32,
 }
 
 impl<R: MediaSource> Mp4Demuxer<R> {
     /// Create a new MP4 demuxer from a media source
     ///
-    /// **Warning**: Currently loads entire file into memory.
-    /// Streaming support with constant memory usage coming in Phase 2.
-    pub fn new(mut source: R) -> Result<Self> {
-        tracing::warn!(
-            "MP4 demuxer currently loads entire file - streaming support planned for Phase 2"
-        );
+    /// Uses buffered reading for efficient large file handling.
+    /// Memory usage is constant regardless of file size.
+    pub fn new(source: R) -> Result<Self> {
+        // Get file size for mp4 crate API
+        let size = source.len().ok_or_else(|| {
+            Error::InvalidInput("Cannot determine source length - required for MP4 parsing".to_string())
+        })?;
 
-        let mut buffer = Vec::new();
-        std::io::Read::read_to_end(&mut source, &mut buffer)
-            .map_err(Error::Io)?;
+        tracing::info!("Opening MP4 file ({} bytes) with streaming support", size);
 
-        let mut cursor = std::io::Cursor::new(&buffer);
-        let context = mp4parse::read_mp4(&mut cursor)
-            .map_err(|e| Error::ContainerParse(format!("Failed to parse MP4: {:?}", e)))?;
+        let buf_reader = BufReader::new(source);
+        let reader = mp4::Mp4Reader::read_header(buf_reader, size)
+            .map_err(|e| Error::ContainerParse(format!("Failed to parse MP4: {}", e)))?;
 
-        let duration_ms = context.tracks
-            .first()
-            .and_then(|track| track.edited_duration)
-            .and_then(|duration| {
-                context.timescale
-                    .map(|ts| (duration.0 * 1000) / ts.0)
-            });
+        // Extract metadata
+        let duration = reader.duration();
+        let timescale = reader.timescale();
+        let duration_ms = if timescale > 0 {
+            Some((duration.as_millis() * 1000) / timescale as u128).and_then(|d| d.try_into().ok())
+        } else {
+            None
+        };
 
-        let stream_count = context.tracks.len();
+        let stream_count = reader.tracks().len();
 
         let metadata = Metadata {
             duration_ms,
@@ -52,27 +52,89 @@ impl<R: MediaSource> Mp4Demuxer<R> {
             format: "MP4".to_string(),
         };
 
+        tracing::info!(
+            "MP4 opened: {} tracks, duration: {:?}ms",
+            stream_count,
+            duration_ms
+        );
+
         Ok(Self {
-            _source: source,
-            context,
+            reader,
             metadata,
+            current_track: None,
+            current_sample: 0,
         })
     }
 
     /// Get track information
-    pub fn tracks(&self) -> &[mp4parse::Track] {
-        &self.context.tracks
+    pub fn tracks(&self) -> &std::collections::HashMap<u32, mp4::Mp4Track> {
+        self.reader.tracks()
+    }
+
+    /// Select a track for reading
+    pub fn select_track(&mut self, track_id: u32) -> Result<()> {
+        if !self.reader.tracks().contains_key(&track_id) {
+            return Err(Error::InvalidInput(format!(
+                "Track {} not found",
+                track_id
+            )));
+        }
+        self.current_track = Some(track_id);
+        self.current_sample = 0;
+        Ok(())
+    }
+}
+
+impl<R: MediaSource> std::fmt::Debug for Mp4Demuxer<R> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Mp4Demuxer")
+            .field("metadata", &self.metadata)
+            .field("current_track", &self.current_track)
+            .field("current_sample", &self.current_sample)
+            .finish()
     }
 }
 
 impl<R: MediaSource> Demuxer for Mp4Demuxer<R> {
     fn read_packet(&mut self) -> Result<Option<Packet>> {
-        // mp4parse provides structure parsing but not sample data extraction
-        // Full implementation requires tracking sample table offsets and reading from file
-        // For Phase 1, metadata extraction is the priority
-        Err(Error::UnsupportedFormat(
-            "Packet reading not yet implemented - requires sample table parsing".to_string()
-        ))
+        let track_id = match self.current_track {
+            Some(id) => id,
+            None => {
+                // Auto-select first track if none selected
+                if let Some(&first_id) = self.reader.tracks().keys().next() {
+                    self.select_track(first_id)?;
+                    first_id
+                } else {
+                    return Ok(None); // No tracks
+                }
+            }
+        };
+
+        self.current_sample += 1;
+
+        // Try to read sample from current track
+        match self.reader.read_sample(track_id, self.current_sample) {
+            Ok(Some(sample)) => {
+                // Convert mp4::Mp4Sample to our Packet type
+                Ok(Some(Packet {
+                    stream_index: track_id as usize,
+                    data: sample.bytes.to_vec(),
+                    pts: Some(sample.start_time as i64),
+                    dts: None, // mp4 crate doesn't expose DTS separately
+                    is_keyframe: sample.is_sync,
+                }))
+            }
+            Ok(None) => {
+                // End of current track, try next track
+                self.current_track = None;
+                self.current_sample = 0;
+                Ok(None)
+            }
+            Err(e) => Err(Error::ContainerParse(format!(
+                "Failed to read sample: {}",
+                e
+            ))),
+        }
     }
 
     fn metadata(&self) -> &Metadata {
