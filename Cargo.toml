@@ -6,12 +6,15 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.0.0"
 edition = "2024"
 rust-version = "1.85"
 license = "Apache-2.0"
 repository = "https://github.com/nijaru/mead"
 homepage = "https://github.com/nijaru/mead"
+description = "Memory-safe media processing toolkit"
+keywords = ["video", "codec", "media", "av1", "mp4"]
+categories = ["multimedia::video", "multimedia::encoding"]
 
 [workspace.dependencies]
 # Core dependencies
