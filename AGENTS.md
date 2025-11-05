@@ -115,12 +115,20 @@ cargo publish -p mead
 
 ## Current Focus
 
-**Version**: 0.0.0 (name reservation only - no functionality yet)
+**Version**: 0.0.0 (staying on 0.0.x until production-ready)
 
-**Phase**: Phase 1 (MP4 + AV1) - Initial implementation
+**IMPORTANT**: We are staying on 0.0.x versions for a long time. Not ready for 0.1.0 until core functionality is solid and well-tested. Version bumps happen only when explicitly instructed.
+
+**Phase**: Phase 1a (SOTA Refactoring) - Complete
+
+Latest work:
+- Phase 1a: Refactored to SOTA API patterns (MediaSource, Arc<Frame>, send-receive)
+- 16 tests passing, zero clippy warnings
+- Known limitation: MP4 still loads entire file (mp4parse API issue)
 
 See **ai/STATUS.md** for current state and blockers.
 See **ai/PLAN.md** for full roadmap and technical architecture.
+See **ai/REFACTORING_PLAN.md** for completed SOTA improvements.
 
 ## Project Goals
 
