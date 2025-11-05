@@ -1,6 +1,8 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use tracing::info;
+use mead_core::container::{mp4::Mp4Demuxer, Demuxer};
+use std::fs::File;
+use tracing::{info, error};
 
 #[derive(Parser)]
 #[command(name = "mead")]
@@ -39,8 +41,7 @@ enum Commands {
     },
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let cli = Cli::parse();
@@ -48,17 +49,52 @@ async fn main() -> Result<()> {
     match cli.command {
         Commands::Info { input } => {
             info!("Reading info from: {}", input);
-            println!("Info command not yet implemented");
+
+            let file = File::open(&input)?;
+            let demuxer = Mp4Demuxer::new(file)?;
+
+            let metadata = demuxer.metadata();
+
+            println!("File: {}", input);
+            println!("Format: {}", metadata.format);
+            println!("Streams: {}", metadata.stream_count);
+
+            if let Some(duration_ms) = metadata.duration_ms {
+                let seconds = duration_ms / 1000;
+                let minutes = seconds / 60;
+                let hours = minutes / 60;
+                println!(
+                    "Duration: {}:{:02}:{:02}.{:03}",
+                    hours,
+                    minutes % 60,
+                    seconds % 60,
+                    duration_ms % 1000
+                );
+            } else {
+                println!("Duration: Unknown");
+            }
+
+            println!("\nTracks:");
+            for (i, track) in demuxer.tracks().iter().enumerate() {
+                println!("  Track {}: {:?}", i, track.track_type);
+                println!("    ID: {}", track.id);
+                if let Some(tkhd) = &track.tkhd {
+                    println!("    Disabled: {}", tkhd.disabled);
+                    println!("    Duration: {:?}", tkhd.duration);
+                    println!("    Dimensions: {}x{}", tkhd.width, tkhd.height);
+                }
+            }
+
             Ok(())
         }
         Commands::Encode { input, output, codec } => {
             info!("Encoding {} -> {} (codec: {})", input, output, codec);
-            println!("Encode command not yet implemented");
+            error!("Encode command not yet implemented");
             Ok(())
         }
         Commands::Decode { input, output } => {
             info!("Decoding {} -> {}", input, output);
-            println!("Decode command not yet implemented");
+            error!("Decode command not yet implemented");
             Ok(())
         }
     }
