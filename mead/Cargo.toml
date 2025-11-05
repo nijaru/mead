@@ -11,7 +11,7 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
-mead-core = { path = "../mead-core" }
+mead-core = { version = "0.0.0", path = "../mead-core" }
 anyhow.workspace = true
 clap.workspace = true
 tracing.workspace = true
