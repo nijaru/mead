@@ -1,8 +1,8 @@
 # mead - Session Context
 
-**Current state**: Phase 1c (Large File Tests) - COMPLETE
+**Current state**: Phase 2a (Audio Codecs) - IN PROGRESS
 
-**Last session**: Completed Phase 1c by adding comprehensive large file tests. Verified streaming MP4 implementation handles large files efficiently with constant memory usage. All 18 tests passing.
+**Last session**: Started Phase 2 audio support. Added Opus decoder, AAC placeholder, extended MP4 demuxer for audio tracks, and implemented CLI audio extraction. 21 tests passing.
 
 ## Quick Navigation
 
@@ -62,8 +62,8 @@ let sample = reader.read_sample(track_id, sample_id)?;
 |--------|--------|
 | Version | 0.0.0 (staying on 0.0.x for long time, not ready for 0.1.0) |
 | Published | crates.io: mead, mead-core (v0.0.0 placeholder) |
-| Phase | Phase 1c complete, ready for Phase 2 |
-| Tests | 18 passing (frame, io, codec, container, large files) |
+| Phase | Phase 2a in progress (Audio codecs) |
+| Tests | 21 passing (frame, io, codec, container, audio) |
 | Architecture | Streaming MP4, MediaSource, Arc<Frame>, send-receive encoder |
 | Clippy | Zero warnings |
 
@@ -78,21 +78,23 @@ let sample = reader.read_sample(track_id, sample_id)?;
 
 ## What Doesn't Work
 
-❌ **CLI encode command**: Not wired up yet (encoder exists but CLI doesn't use it)
-❌ **AV1 decoder**: Planned using rav1d
-❌ **Audio codecs**: Phase 2 (AAC, Opus)
-❌ **Other containers**: WebM/MKV - Phase 4
+❌ **CLI encode command**: Not wired up yet (needs muxing support)
 ❌ **AV1 decoder**: Planned for future phase
+❌ **AAC decoder**: Placeholder implementation (needs ADTS parsing)
+❌ **Audio muxing**: Phase 2 completion
+❌ **Other containers**: WebM/MKV - Phase 4
 
-## Next Phase: Phase 2 (Audio Support)
+## Next Phase: Phase 2 (Audio Support) - IN PROGRESS
 
 **Phase 1 Complete**: MP4 + AV1 video support with streaming and large file handling
 
-**Phase 2 Options**:
-- Add AAC audio codec support
-- Add Opus audio codec support
-- Extend container muxing for audio tracks
-- Add audio demuxing from MP4
+**Phase 2 Progress**:
+- ✅ Opus decoder implementation
+- ✅ AAC decoder placeholder (needs ADTS parsing)
+- ✅ MP4 audio track demuxing
+- ✅ CLI audio extraction
+- ❌ Audio muxing support
+- ❌ Complete AAC implementation
 
 ## Architecture
 
@@ -224,15 +226,20 @@ cargo test mp4_spike -- --ignored --nocapture
 
 See `ai/PLAN.md` for full details:
 
-- **Phase 1** (current): MP4 + AV1
+- **Phase 1**: MP4 + AV1 ✅ COMPLETE
   - Phase 1a ✅: SOTA refactoring (MediaSource, Arc<Frame>, send-receive)
   - Phase 1b ✅: Streaming fix (mp4 crate)
-  - Phase 1c: Wire up encode command OR add decoder
-- **Phase 2**: Audio support (AAC, Opus)
+  - Phase 1c ✅: Large file tests
+- **Phase 2** (current): Audio support (AAC, Opus) - IN PROGRESS
+  - ✅ Opus decoder implementation
+  - ✅ AAC decoder placeholder
+  - ✅ MP4 audio track demuxing
+  - ✅ CLI audio extraction
+  - ❌ Audio muxing support
 - **Phase 3**: H.264, H.265, VP9 codecs
 - **Phase 4**: WebM/MKV containers
 - **Phase 5**: Streaming protocols (HLS, DASH, RTMP)
 
 ---
 
-**Phase 1 Complete** - Next: Phase 2 (Audio Support) or other priorities
+**Phase 2 In Progress** - Next: Complete AAC decoder and add audio muxing

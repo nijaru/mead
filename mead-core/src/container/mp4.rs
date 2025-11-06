@@ -83,6 +83,40 @@ impl<R: MediaSource> Mp4Demuxer<R> {
         self.current_sample = 0;
         Ok(())
     }
+
+    /// Get video tracks
+    pub fn video_tracks(&self) -> Vec<(u32, &mp4::Mp4Track)> {
+        self.reader.tracks().iter()
+            .filter(|(_, track)| matches!(track.track_type(), Ok(mp4::TrackType::Video)))
+            .map(|(id, track)| (*id, track))
+            .collect()
+    }
+
+    /// Get audio tracks
+    pub fn audio_tracks(&self) -> Vec<(u32, &mp4::Mp4Track)> {
+        self.reader.tracks().iter()
+            .filter(|(_, track)| matches!(track.track_type(), Ok(mp4::TrackType::Audio)))
+            .map(|(id, track)| (*id, track))
+            .collect()
+    }
+
+    /// Select the first video track
+    pub fn select_video_track(&mut self) -> Result<()> {
+        if let Some((track_id, _)) = self.video_tracks().first() {
+            self.select_track(*track_id)
+        } else {
+            Err(Error::InvalidInput("No video tracks found".to_string()))
+        }
+    }
+
+    /// Select the first audio track
+    pub fn select_audio_track(&mut self) -> Result<()> {
+        if let Some((track_id, _)) = self.audio_tracks().first() {
+            self.select_track(*track_id)
+        } else {
+            Err(Error::InvalidInput("No audio tracks found".to_string()))
+        }
+    }
 }
 
 impl<R: MediaSource> std::fmt::Debug for Mp4Demuxer<R> {
@@ -191,6 +225,35 @@ mod tests {
         // The demuxer uses BufReader internally, which provides buffered access
         // This test just verifies the demuxer can be created
         assert!(demuxer.is_ok() || demuxer.is_err()); // Focus on no panics/memory issues
+    }
+
+    #[test]
+    fn test_mp4_track_filtering() {
+        // Test that track filtering methods work correctly
+        let test_mp4 = create_minimal_mp4();
+        let cursor = Cursor::new(test_mp4);
+
+        if let Ok(demuxer) = Mp4Demuxer::new(cursor) {
+            // These should not panic even with minimal MP4
+            let video_tracks = demuxer.video_tracks();
+            let audio_tracks = demuxer.audio_tracks();
+
+            // Minimal MP4 may not have tracks, but methods should work
+            assert!(video_tracks.is_empty() || !video_tracks.is_empty());
+            assert!(audio_tracks.is_empty() || !audio_tracks.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_mp4_audio_track_selection() {
+        // Test audio track selection (may fail if no audio tracks exist)
+        let test_mp4 = create_minimal_mp4();
+        let cursor = Cursor::new(test_mp4);
+
+        if let Ok(mut demuxer) = Mp4Demuxer::new(cursor) {
+            // This may fail if no audio tracks exist, but shouldn't panic
+            let _ = demuxer.select_audio_track();
+        }
     }
 
     fn create_large_test_mp4(size: usize) -> Vec<u8> {

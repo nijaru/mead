@@ -18,4 +18,6 @@ mp4.workspace = true
 rav1e.workspace = true
 aligned-vec.workspace = true
 num_cpus.workspace = true
+symphonia.workspace = true
+audiopus.workspace = true
 tracing.workspace = true

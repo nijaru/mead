@@ -1,6 +1,8 @@
 //! Codec implementations
 
 pub mod av1;
+pub mod aac;
+pub mod opus;
 
 use crate::{ArcFrame, Result};
 
@@ -8,6 +10,12 @@ use crate::{ArcFrame, Result};
 pub trait VideoDecoder {
     /// Decode a packet into a frame
     fn decode(&mut self, data: &[u8]) -> Result<Option<ArcFrame>>;
+}
+
+/// Trait for audio decoders
+pub trait AudioDecoder {
+    /// Decode audio data into PCM samples (f32, interleaved)
+    fn decode(&mut self, data: &[u8]) -> Result<Option<Vec<f32>>>;
 }
 
 /// Trait for video encoders (send-receive pattern)

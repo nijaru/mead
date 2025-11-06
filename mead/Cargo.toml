@@ -15,6 +15,7 @@ mead-core = { version = "0.0.0", path = "../mead-core" }
 anyhow.workspace = true
 clap.workspace = true
 mp4.workspace = true
+audiopus.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 tokio.workspace = true

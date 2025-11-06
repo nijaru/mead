@@ -4,9 +4,9 @@
 | Version | 0.0.0 (staying on 0.0.x for long time, not ready for 0.1.0) | 2025-11-05 |
 | Published | crates.io: mead, mead-core (v0.0.0 placeholder) | 2025-11-05 |
 | GitHub | https://github.com/nijaru/mead | 2025-11-05 |
-| Phase | Phase 1c (Large File Tests) - **COMPLETE** | 2025-11-05 |
-| Code Status | Streaming MP4 support, SOTA patterns, large file testing | 2025-11-05 |
-| Tests | 18 tests passing (frame, io, codec, container, large files) | 2025-11-05 |
+| Phase | Phase 2a (Audio Codecs) - **IN PROGRESS** | 2025-11-05 |
+| Code Status | MP4 audio demuxing, Opus decoder, AAC placeholder | 2025-11-05 |
+| Tests | 21 tests passing (frame, io, codec, container, audio) | 2025-11-05 |
 | Architecture | mp4 crate streaming, MediaSource, Arc<Frame>, send-receive | 2025-11-05 |
 
 ## What Worked
@@ -38,11 +38,18 @@
 - **CLI updated**: Uses mp4 crate's HashMap-based track API
 - **All tests passing**: 16 tests, zero warnings
 
-### Phase 1c Large File Tests (Latest 2025-11-05)
+### Phase 1c Large File Tests (2025-11-05)
 - **Added streaming memory tests**: Verify constant memory usage with large files
 - **Added buffered I/O tests**: Confirm efficient reading patterns
 - **Created large file simulation**: Test with 1MB+ inputs for memory behavior
 - **18 tests passing**: Added 2 new tests for large file handling
+
+### Phase 2a Audio Codecs (Latest 2025-11-05)
+- **Added Opus decoder**: Using audiopus crate for Opus audio decoding
+- **Added AAC decoder placeholder**: Symphonia-based AAC decoder (needs ADTS parsing)
+- **Extended MP4 demuxer**: Added audio track filtering and selection methods
+- **Updated CLI decode command**: Can extract audio from MP4 files to raw PCM
+- **21 tests passing**: Added audio codec and MP4 audio track tests
 
 ## What Didn't Work
 
@@ -60,29 +67,34 @@
 
 ## Active Work
 
-Phase 1c (Large File Tests) - **COMPLETE**:
-- ✅ Added streaming memory usage tests
-- ✅ Added buffered I/O verification tests
-- ✅ Created large file simulation (1MB+ test data)
-- ✅ All tests passing (18 total)
+Phase 2a (Audio Codecs) - **IN PROGRESS**:
+- ✅ Added Opus decoder using audiopus crate
+- ✅ Added AAC decoder placeholder (needs ADTS parsing)
+- ✅ Extended MP4 demuxer with audio track methods
+- ✅ Updated CLI decode command for audio extraction
+- ✅ All tests passing (21 total)
 
-**Next**: Ready for Phase 2 (Audio support) or other priorities
+**Next**: Complete AAC decoder implementation or add audio muxing
 
 ## Known Limitations
 
 1. **AV1 encoder only**: No decoder yet
    - Encoder works with send-receive pattern
-   - Decoder planned for Phase 1c (using rav1d)
+   - Decoder planned for future phase
    - H.264/H.265 in Phase 3
 
 2. **No encode CLI command**: Reading works, writing doesn't
    - Can read MP4 files and extract samples
-   - Cannot transcode to AV1 yet (need to wire up encoder)
-   - Phase 1c will add full encode pipeline
+   - Cannot transcode to AV1 yet (need muxing support)
+   - Phase 2 will add full encode pipeline
 
-3. **Single format support**: MP4 + AV1 only
+3. **AAC decoder incomplete**: Placeholder implementation
+   - Opus decoder works, AAC needs ADTS parsing
+   - Audio extraction works for Opus-encoded audio
+   - Full AAC support needs additional work
+
+4. **Limited container support**: MP4 only
    - WebM/MKV in Phase 4
-   - Audio codecs in Phase 2
    - Streaming protocols in Phase 5
 
 ## Blockers

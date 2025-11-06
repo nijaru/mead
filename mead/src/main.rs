@@ -1,7 +1,11 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use mead_core::container::{mp4::Mp4Demuxer, Demuxer};
+use mead_core::codec::opus::OpusDecoderImpl;
+use mead_core::codec::AudioDecoder;
+use audiopus::{SampleRate, Channels};
 use std::fs::File;
+use std::io::Write;
 use tracing::{info, error};
 
 #[derive(Parser)]
@@ -108,7 +112,36 @@ fn main() -> Result<()> {
         }
         Commands::Decode { input, output } => {
             info!("Decoding {} -> {}", input, output);
-            error!("Decode command not yet implemented");
+
+            let file = File::open(&input)?;
+            let mut demuxer = Mp4Demuxer::new(file)?;
+
+            // Try to select an audio track
+            if let Err(_) = demuxer.select_audio_track() {
+                return Err(anyhow::anyhow!("No audio tracks found in file"));
+            }
+
+            // Create output file
+            let mut output_file = File::create(&output)?;
+
+            // Create audio decoder (assume Opus for now, could be extended)
+            let mut audio_decoder = OpusDecoderImpl::new(SampleRate::Hz48000, Channels::Stereo)?;
+
+            // Decode packets
+            let mut packet_count = 0;
+            while let Some(packet) = demuxer.read_packet()? {
+                packet_count += 1;
+
+                // Decode the audio packet
+                if let Some(samples) = audio_decoder.decode(&packet.data)? {
+                    // Write raw PCM samples (little-endian f32)
+                    for &sample in &samples {
+                        output_file.write_all(&sample.to_le_bytes())?;
+                    }
+                }
+            }
+
+            info!("Decoded {} packets to {}", packet_count, output);
             Ok(())
         }
     }
