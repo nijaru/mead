@@ -204,16 +204,34 @@ impl Frame {
             .then(|| &self.planes[0])
     }
 
+    /// Get mutable Y plane (luma) for YUV formats
+    pub fn plane_y_mut(&mut self) -> Option<&mut Plane> {
+        matches!(self.format, PixelFormat::Yuv420p | PixelFormat::Yuv422p | PixelFormat::Yuv444p)
+            .then(|| &mut self.planes[0])
+    }
+
     /// Get U plane (chroma) for YUV formats
     pub fn plane_u(&self) -> Option<&Plane> {
         matches!(self.format, PixelFormat::Yuv420p | PixelFormat::Yuv422p | PixelFormat::Yuv444p)
             .then(|| &self.planes[1])
     }
 
+    /// Get mutable U plane (chroma) for YUV formats
+    pub fn plane_u_mut(&mut self) -> Option<&mut Plane> {
+        matches!(self.format, PixelFormat::Yuv420p | PixelFormat::Yuv422p | PixelFormat::Yuv444p)
+            .then(|| &mut self.planes[1])
+    }
+
     /// Get V plane (chroma) for YUV formats
     pub fn plane_v(&self) -> Option<&Plane> {
         matches!(self.format, PixelFormat::Yuv420p | PixelFormat::Yuv422p | PixelFormat::Yuv444p)
             .then(|| &self.planes[2])
+    }
+
+    /// Get mutable V plane (chroma) for YUV formats
+    pub fn plane_v_mut(&mut self) -> Option<&mut Plane> {
+        matches!(self.format, PixelFormat::Yuv420p | PixelFormat::Yuv422p | PixelFormat::Yuv444p)
+            .then(|| &mut self.planes[2])
     }
 }
 

@@ -13,6 +13,15 @@ pub trait Demuxer {
     fn metadata(&self) -> &Metadata;
 }
 
+/// Trait for container muxers
+pub trait Muxer {
+    /// Write a packet to the container
+    fn write_packet(&mut self, packet: Packet) -> Result<()>;
+
+    /// Finalize and close the container
+    fn finalize(self) -> Result<()>;
+}
+
 /// A packet of encoded media data
 #[derive(Debug, Clone)]
 pub struct Packet {

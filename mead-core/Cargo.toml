@@ -17,4 +17,5 @@ mp4parse.workspace = true
 mp4.workspace = true
 rav1e.workspace = true
 aligned-vec.workspace = true
+num_cpus.workspace = true
 tracing.workspace = true
