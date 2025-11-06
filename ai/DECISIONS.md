@@ -89,6 +89,35 @@
 
 ---
 
+## 2025-11-05: mp4 Crate Over mp4parse for Streaming
+
+**Context**: mp4parse (Mozilla) loads entire file into memory via read_to_end(), creating DoS vulnerability with large files. Needed streaming support with constant memory usage.
+
+**Decision**: Replace mp4parse with mp4 crate for Mp4Demuxer
+
+**Rationale**:
+- mp4parse: Loads full file into Vec<u8> (DoS risk with multi-GB files)
+- mp4 crate: Uses BufReader, streams with Mp4Reader::read_header() + read_sample()
+- mp4 crate: 527K downloads vs mp4parse 25K (more widely used)
+- mp4 crate: Better API for sample reading (no manual sample table parsing)
+- Memory usage: O(buffer_size) not O(file_size)
+
+**Tradeoffs**:
+| Pro | Con |
+|-----|-----|
+| Constant memory usage | Different API (requires rewrite) |
+| No DoS vulnerability | Less Mozilla pedigree |
+| Actual sample reading API | Larger dependency graph |
+| 20x more downloads | - |
+
+**Evidence**:
+- ai/research/rust_media_api_design.md
+- mead-core/tests/mp4_spike.rs (API exploration)
+
+**Commits**: a2a9adf
+
+---
+
 <!-- Template:
 
 ## YYYY-MM-DD: Decision Title

@@ -1,11 +1,25 @@
 ## High Priority
 - [ ] Wire up CLI encode command (transcode to AV1)
-- [ ] Add cargo-fuzz integration for container parsing
-- [ ] Implement full MP4 packet reading (sample table parsing)
 - [ ] Add AV1 decoder using rav1d
+- [ ] Add cargo-fuzz integration for container parsing
 - [ ] Set up CI/CD with GitHub Actions
+- [ ] Add large file tests (verify streaming with multi-GB files)
 
 ## Completed (2025-11-05)
+
+### Phase 1b - Streaming Fix
+- [x] Replace mp4parse with mp4 crate (fixes DoS vulnerability)
+- [x] Implement BufReader streaming (constant memory usage)
+- [x] Add MP4 packet reading (read_sample API)
+- [x] Update CLI to use mp4 crate API
+
+### Phase 1a - SOTA Refactoring
+- [x] Add MediaSource trait and implementations
+- [x] Refactor Frame to use Arc and SIMD-aligned planes
+- [x] Change encoder API to send-receive pattern
+- [x] Add 10 new tests (frame, io)
+
+### Initial Implementation
 - [x] Implement MP4 demuxer metadata extraction using mp4parse-rust
 - [x] Implement AV1 encoder using rav1e
 - [x] Wire up CLI info command
