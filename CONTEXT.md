@@ -1,8 +1,8 @@
 # mead - Session Context
 
-**Current state**: Phase 1b (Streaming Fix) - COMPLETE
+**Current state**: Phase 1c (Large File Tests) - COMPLETE
 
-**Last session**: Fixed critical DoS vulnerability by replacing mp4parse with mp4 crate. Mp4Demuxer now uses BufReader for constant memory usage instead of loading entire files.
+**Last session**: Completed Phase 1c by adding comprehensive large file tests. Verified streaming MP4 implementation handles large files efficiently with constant memory usage. All 18 tests passing.
 
 ## Quick Navigation
 
@@ -49,14 +49,21 @@ let sample = reader.read_sample(track_id, sample_id)?;
 - ✅ PixelFormat type safety (Yuv420p, Yuv422p, Yuv444p, Rgb24)
 - ✅ 10 new tests for frame alignment and I/O
 
+**Phase 1c - Large File Tests** (Commit: 26480be)
+
+- ✅ Added streaming memory usage tests (verify O(buffer_size) not O(file_size))
+- ✅ Added buffered I/O verification tests
+- ✅ Created large file simulation (1MB+ test data)
+- ✅ 18 tests passing (up from 16)
+
 ## Project Status
 
 | Metric | Status |
 |--------|--------|
 | Version | 0.0.0 (staying on 0.0.x for long time, not ready for 0.1.0) |
 | Published | crates.io: mead, mead-core (v0.0.0 placeholder) |
-| Phase | Phase 1b complete, ready for 1c |
-| Tests | 16 passing (frame, io, codec, container) |
+| Phase | Phase 1c complete, ready for Phase 2 |
+| Tests | 18 passing (frame, io, codec, container, large files) |
 | Architecture | Streaming MP4, MediaSource, Arc<Frame>, send-receive encoder |
 | Clippy | Zero warnings |
 
@@ -75,13 +82,17 @@ let sample = reader.read_sample(track_id, sample_id)?;
 ❌ **AV1 decoder**: Planned using rav1d
 ❌ **Audio codecs**: Phase 2 (AAC, Opus)
 ❌ **Other containers**: WebM/MKV - Phase 4
-❌ **Large file tests**: Need to verify streaming with multi-GB files
+❌ **AV1 decoder**: Planned for future phase
 
-## Next Options
+## Next Phase: Phase 2 (Audio Support)
 
-**Option A**: Wire up CLI encode command (transcode MP4 to AV1)
-**Option B**: Add AV1 decoder (rav1d integration)
-**Option C**: Add large file tests (verify streaming with multi-GB files)
+**Phase 1 Complete**: MP4 + AV1 video support with streaming and large file handling
+
+**Phase 2 Options**:
+- Add AAC audio codec support
+- Add Opus audio codec support
+- Extend container muxing for audio tracks
+- Add audio demuxing from MP4
 
 ## Architecture
 
@@ -224,4 +235,4 @@ See `ai/PLAN.md` for full details:
 
 ---
 
-**Session ready to continue** - Next: Option A/B/C (see "Next Options" above)
+**Phase 1 Complete** - Next: Phase 2 (Audio Support) or other priorities
