@@ -13,6 +13,12 @@ pub struct Av1Config {
     pub quantizer: u8,
     /// Bitrate in kilobits per second
     pub bitrate_kbps: Option<u32>,
+    /// Number of tiles horizontally (power of 2, 0 = auto)
+    pub tile_cols: usize,
+    /// Number of tiles vertically (power of 2, 0 = auto)
+    pub tile_rows: usize,
+    /// Number of threads (0 = auto-detect from CPU cores)
+    pub threads: usize,
 }
 
 impl Default for Av1Config {
@@ -21,7 +27,55 @@ impl Default for Av1Config {
             speed: 6,
             quantizer: 100,
             bitrate_kbps: None,
+            tile_cols: 0,  // Auto-calculate based on resolution
+            tile_rows: 0,  // Auto-calculate based on resolution
+            threads: 0,    // Auto-detect CPU cores
         }
+    }
+}
+
+impl Av1Config {
+    /// Calculate optimal tile configuration for given resolution
+    ///
+    /// Rules:
+    /// - Tiles must be powers of 2
+    /// - Each tile should be at least 256x256 pixels
+    /// - Target ~4 tiles per CPU core for good parallelism
+    pub fn calculate_tiles(width: u32, height: u32, threads: usize) -> (usize, usize) {
+        // Don't create tiles smaller than 256x256
+        let max_tile_cols = ((width / 256) as usize).next_power_of_two().max(1);
+        let max_tile_rows = ((height / 256) as usize).next_power_of_two().max(1);
+
+        // Target number of tiles based on threads (aim for 2-4 tiles per thread)
+        let target_tiles = (threads * 2).max(4);
+
+        // Find best split that fits constraints
+        let mut best_cols = 1usize;
+        let mut best_rows = 1usize;
+        let mut best_diff = usize::MAX;
+
+        for cols in [1usize, 2, 4, 8] {
+            for rows in [1usize, 2, 4, 8] {
+                if cols > max_tile_cols || rows > max_tile_rows {
+                    continue;
+                }
+
+                let total = cols * rows;
+                let diff = if total > target_tiles {
+                    total - target_tiles
+                } else {
+                    target_tiles - total
+                };
+
+                if diff < best_diff {
+                    best_diff = diff;
+                    best_cols = cols;
+                    best_rows = rows;
+                }
+            }
+        }
+
+        (best_cols, best_rows)
     }
 }
 
@@ -49,11 +103,32 @@ impl Av1Encoder {
 
     /// Create a new AV1 encoder with custom configuration
     pub fn with_config(width: u32, height: u32, config: Av1Config) -> Result<Self> {
+        // Auto-detect threads if not specified
+        let threads = if config.threads == 0 {
+            num_cpus::get()
+        } else {
+            config.threads
+        };
+
+        // Auto-calculate tiles if not specified
+        let (tile_cols, tile_rows) = if config.tile_cols == 0 || config.tile_rows == 0 {
+            Av1Config::calculate_tiles(width, height, threads)
+        } else {
+            (config.tile_cols, config.tile_rows)
+        };
+
+        tracing::debug!(
+            "AV1 encoder config: {}x{}, speed={}, tiles={}x{}, threads={}",
+            width, height, config.speed, tile_cols, tile_rows, threads
+        );
+
         let mut enc_config = EncoderConfig {
             width: width as usize,
             height: height as usize,
             speed_settings: SpeedSettings::from_preset(config.speed),
             quantizer: config.quantizer as usize,
+            tile_cols,
+            tile_rows,
             ..Default::default()
         };
 
@@ -61,7 +136,9 @@ impl Av1Encoder {
             enc_config.bitrate = (br as i32) * 1000;
         }
 
-        let cfg = Config::new().with_encoder_config(enc_config);
+        let cfg = Config::new()
+            .with_encoder_config(enc_config)
+            .with_threads(threads);
 
         let context = cfg
             .new_context()
@@ -211,6 +288,9 @@ mod tests {
             speed: 10,
             quantizer: 50,
             bitrate_kbps: Some(1000),
+            tile_cols: 1,
+            tile_rows: 1,
+            threads: 2,
         };
         let encoder = Av1Encoder::with_config(64, 64, config);
         assert!(encoder.is_ok());
@@ -253,5 +333,29 @@ mod tests {
         // Finish encoding
         let packets = encoder.finish().unwrap();
         assert!(!packets.is_empty());
+    }
+
+    #[test]
+    fn test_tile_calculation() {
+        // Small resolution: 640x480 with 4 threads
+        // Limited by 256x256 minimum tile size (2.5 cols × 1.8 rows max)
+        let (cols, rows) = Av1Config::calculate_tiles(640, 480, 4);
+        assert!(cols * rows >= 1, "Should have at least 1 tile");
+        assert!(cols * rows <= 8, "Shouldn't over-tile");
+        println!("640x480@4t: {}x{} = {} tiles", cols, rows, cols * rows);
+
+        // 1080p: 1920x1080 with 8 threads
+        // Can support more tiles (7.5 cols × 4.2 rows max)
+        let (cols, rows) = Av1Config::calculate_tiles(1920, 1080, 8);
+        assert!(cols * rows >= 4, "Should have meaningful parallelism");
+        assert!(cols * rows <= 32, "Shouldn't over-tile");
+        println!("1920x1080@8t: {}x{} = {} tiles", cols, rows, cols * rows);
+
+        // 4K: 3840x2160 with 16 threads
+        // Good tile support (15 cols × 8.4 rows max)
+        let (cols, rows) = Av1Config::calculate_tiles(3840, 2160, 16);
+        assert!(cols * rows >= 8, "Should have good parallelism for 4K");
+        assert!(cols * rows <= 64, "Shouldn't over-tile");
+        println!("3840x2160@16t: {}x{} = {} tiles", cols, rows, cols * rows);
     }
 }

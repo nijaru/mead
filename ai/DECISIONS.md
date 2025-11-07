@@ -165,6 +165,50 @@ pb.set_style(ProgressStyle::with_template(
 
 ---
 
+## 2025-11-06: Y4M Input for Real Transcoding (Phase 2d)
+
+**Context**: After completing encode pipeline in Phase 2c, mead could only generate test patterns. To transcode real video, we needed either:
+1. H.264 decoder (requires unsafe OpenH264 bindings or immature pure Rust)
+2. Y4M raw video input (pure Rust, widely used in professional workflows)
+
+**Decision**: Add Y4M demuxer support before H.264 decoder
+
+**Rationale**:
+- Y4M is raw YUV - no decoding needed (stays memory-safe)
+- y4m crate is pure Rust, well-maintained (v0.8)
+- Professional workflow: `ffmpeg -f yuv4mpegpipe - | mead encode -`
+- Common in video processing pipelines (ffmpeg, x264, x265)
+- Enables real transcoding testing without unsafe code
+- Validates full encode pipeline with actual video frames
+- Better to prove architecture works before adding complexity
+
+**Tradeoffs**:
+| Pro | Con |
+|-----|-----|
+| Pure Rust, memory-safe | Users need ffmpeg for MP4 input |
+| Common professional workflow | Extra step vs direct MP4 |
+| Tests encode pipeline with real video | Can't transcode MP4 standalone yet |
+| Validates Arc<Frame> zero-copy design | - |
+
+**Implementation**:
+```rust
+// Y4M supports common YUV formats
+Y4mDemuxer::new(stdin())?  // Stdin piping
+Y4mDemuxer::new(File::open("input.y4m")?)?  // File input
+
+// Supports YUV420p, YUV422p, YUV444p
+```
+
+**Results**:
+- Full transcode: Y4M → AV1 → IVF at 25-48 fps
+- 36 tests passing (30 core + 4 output + 2 doctests)
+- Valid IVF output playable in VLC/ffmpeg/dav1d
+- Professional workflow integration confirmed
+
+**Next**: Phase 3 will add H.264/H.265 decoders for standalone MP4 transcoding
+
+---
+
 <!-- Template:
 
 ## YYYY-MM-DD: Decision Title

@@ -1,18 +1,20 @@
 ## Goal
-Build a memory-safe media processing toolkit in Rust that prevents the memory safety vulnerabilities (buffer overflows, use-after-free) that plague FFmpeg. Focus on modern, widely-used codecs rather than comprehensive format support.
+Build a memory-safe media processing toolkit focused on modern codecs and safety.
 
-**Why**: Google's security research revealed 20+ FFmpeg vulnerabilities. FFmpeg's 1.5M LOC C codebase and 400+ formats make comprehensive fixes difficult. Rust's ownership system prevents these vulnerability classes at compile time.
+**Why**: Media processing tools handle untrusted input and complex formats, making them high-risk for security issues. Pure Rust implementation provides memory safety guarantees, while focusing on modern codecs (AV1, Opus) rather than comprehensive legacy format support allows for a cleaner, more maintainable architecture.
 
 ## Phases
 
 | Phase | Status | Deliverables | Success Criteria |
 |-------|--------|--------------|------------------|
-| Phase 1 | COMPLETE | MP4 demuxer/muxer + AV1 encode/decode | Parse MP4, encode/decode AV1 frames, CLI commands work |
-| Phase 2a | IN PROGRESS | Audio codec support (AAC, Opus) | Handle audio streams, sync with video |
-| Phase 2b | ← NEXT | Production CLI UX | Progress bars, colors, human formatting, TTY detection |
-| Phase 3 | Planned | H.264, H.265, VP9 codecs | Cover 80%+ of streaming use cases |
+| Phase 1 | COMPLETE | MP4 demuxer + AV1 encoder + SOTA patterns | Parse MP4, encode AV1, Arc<Frame>, send-receive |
+| Phase 2a | COMPLETE | Audio codec support (Opus, AAC) | Opus decoder working, AAC placeholder |
+| Phase 2b | COMPLETE | Production CLI UX | Progress bars, colors, human formatting, TTY detection |
+| Phase 2c | COMPLETE | IVF muxer + encode pipeline | Write IVF files, test pattern encoding |
+| Phase 2d | COMPLETE | Y4M demuxer + full transcode | Read Y4M, transcode Y4M→AV1→IVF, stdin piping |
+| Phase 3 | ← NEXT | H.264/H.265 video codecs | Cover 80%+ of streaming use cases |
 | Phase 4 | Planned | WebM/MKV container support | Alternative container formats |
-| Phase 5 | Future | Streaming protocols (HLS, DASH, RTMP) | Network streaming ingress/egress |
+| Phase 5 | Future | Streaming protocols (HLS, DASH) | Network streaming ingress/egress |
 
 ## Dependencies
 
@@ -37,7 +39,21 @@ Build a memory-safe media processing toolkit in Rust that prevents the memory sa
 | **CLI** | clap + tracing + indicatif + console | Standard Rust tools, production UX with progress bars |
 | **Async** | tokio (network only) | Sync I/O for files, async for streaming |
 
-## Phase 2b Details (Next)
+## Phase 3 Details (Next)
+
+**Scope:**
+- H.264 decoder (OpenH264 or pure Rust alternative)
+- H.265/HEVC decoder (investigate pure Rust options)
+- MP4 input with H.264/H.265 video → AV1 output
+- Full transcode pipeline: MP4 → decode → AV1 encode → IVF/MP4
+
+**Success criteria:**
+- Transcode MP4 (H.264) to AV1/IVF
+- Memory-safe decoder implementation
+- Performance comparable to existing tools
+- All tests passing, zero unsafe violations
+
+## Phase 2b Details (Complete)
 
 **Scope:**
 - Progress bars with indicatif (frame count, fps, speed, ETA)

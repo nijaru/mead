@@ -1,7 +1,8 @@
-//! Container format handlers (MP4, IVF, WebM, MKV)
+//! Container format handlers (MP4, IVF, WebM, MKV, Y4M)
 
 pub mod mp4;
 pub mod ivf;
+pub mod y4m;
 
 use crate::Result;
 

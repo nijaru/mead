@@ -2,52 +2,113 @@
 
 **M**emory-safe **E**ncoding **A**nd **D**ecoding
 
-A modern, safe media processing toolkit written in Rust, designed to prevent the memory safety vulnerabilities that plague traditional media libraries.
+A media processing toolkit focused on safety and modern codecs.
 
-## Goals
+## Features
 
-- **Memory Safety First**: Pure Rust implementations and safe bindings to eliminate buffer overflows, use-after-free, and other memory safety issues
-- **Modern Codecs**: Focus on widely-used formats (AV1, H.264, AAC, Opus) rather than legacy codec sprawl
-- **Clean Architecture**: Modular design with clear separation between containers, codecs, and processing pipeline
-- **Production Ready**: Comprehensive error handling, logging, and fuzzing from day one
+- **AV1 encoding** with rav1e
+- **Y4M input** for raw video processing
+- **IVF output** for AV1 streams
+- **MP4 demuxing** with streaming support
+- **Audio decoding** (Opus, AAC)
+- **Stdin/stdout piping** for integration with existing tools
+- **Memory safety** through pure Rust implementation
+
+## Installation
+
+```bash
+cargo install mead
+```
+
+Or build from source:
+
+```bash
+git clone https://github.com/nijaru/mead
+cd mead
+cargo build --release
+```
+
+## Usage
+
+### Encode video to AV1
+
+```bash
+# Encode Y4M file to AV1/IVF
+mead encode input.y4m -o output.ivf --codec av1
+
+# Pipe from ffmpeg
+ffmpeg -i input.mp4 -f yuv4mpegpipe - | mead encode - -o output.ivf --codec av1
+```
+
+### Get file information
+
+```bash
+mead info video.mp4
+```
+
+### Extract audio
+
+```bash
+mead decode audio.mp4 -o output.pcm
+```
+
+## Supported Formats
+
+| Format | Read | Write |
+|--------|------|-------|
+| MP4    | ✅   | ⏳    |
+| IVF    | ⏳   | ✅    |
+| Y4M    | ✅   | ⏳    |
+| WebM   | ⏳   | ⏳    |
+
+| Codec  | Decode | Encode |
+|--------|--------|--------|
+| AV1    | ⏳     | ✅     |
+| Opus   | ✅     | ⏳     |
+| AAC    | 🚧     | ⏳     |
+| H.264  | ⏳     | ⏳     |
+
+✅ Implemented | 🚧 Partial | ⏳ Planned
 
 ## Project Status
 
-🚧 **Early Development** - Not ready for production use
+Early development. Core video encoding pipeline is functional. Suitable for experimentation and testing, not yet recommended for production use.
 
-Currently implementing Phase 1: MP4 container support + AV1 codec
+**Current capabilities:**
+- Transcode Y4M to AV1/IVF at 25-48 fps (640x480)
+- Extract Opus audio from MP4
+- Stream processing with constant memory usage
+- Professional workflow integration via stdin/stdout
+
+**Roadmap:**
+- Phase 3: H.264/H.265 video codecs
+- Phase 4: WebM/MKV container support
+- Phase 5: Streaming protocols (HLS, DASH)
 
 ## Architecture
 
 ```
-mead-cli/          # Command-line interface
-mead-core/         # Core library
-  ├── container/   # Format handlers (MP4, WebM, MKV)
-  ├── codec/       # Codec implementations (AV1, H.264, AAC)
-  ├── pipeline/    # Processing pipeline
-  └── io/          # I/O abstraction
+mead/              # CLI binary
+mead-core/         # Library crate
+  ├── container/   # MP4, IVF, Y4M format handlers
+  ├── codec/       # AV1, Opus, AAC codecs
+  ├── frame.rs     # Zero-copy frame handling with SIMD alignment
+  └── io.rs        # Streaming I/O abstractions
 ```
 
-## Roadmap
+## Design Principles
 
-- **Phase 1** (Current): MP4 container + AV1 codec
-- **Phase 2**: Audio support (AAC, Opus)
-- **Phase 3**: H.264, H.265, VP9 codecs
-- **Phase 4**: WebM/MKV containers
-- **Phase 5**: Streaming protocols (HLS, DASH, RTMP)
+- **Safety**: Memory-safe APIs, streaming I/O to prevent resource exhaustion
+- **Performance**: Zero-copy frame sharing, SIMD-aligned buffers, efficient encoding
+- **Composability**: Library-first design, CLI built on public APIs
+- **Modern codecs**: Focus on AV1, Opus, and contemporary formats
 
-## Safety Approach
+## Contributing
 
-- Pure Rust libraries preferred: `rav1e`, `rav1d`, `mp4parse-rust`, `symphonia`
-- Safe bindings for mature C libraries where necessary
-- `#![forbid(unsafe_code)]` in safe modules
-- Fuzzing integrated in CI from day one
-- No unsafe FFmpeg wrappers
+Contributions welcome! The project prioritizes correctness, safety, and code quality.
 
 ## License
 
 Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
 
-## Contributing
-
-Contributions welcome! This project prioritizes code quality, safety, and correctness over speed of development.
+Patent protection is especially important for media codecs.

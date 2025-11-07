@@ -20,4 +20,5 @@ aligned-vec.workspace = true
 num_cpus.workspace = true
 symphonia.workspace = true
 audiopus.workspace = true
+y4m.workspace = true
 tracing.workspace = true

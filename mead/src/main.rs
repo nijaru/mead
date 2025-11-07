@@ -2,15 +2,15 @@ mod output;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use mead_core::container::{mp4::Mp4Demuxer, ivf::IvfMuxer, Demuxer, Muxer, Packet};
+use mead_core::container::{mp4::Mp4Demuxer, ivf::IvfMuxer, y4m::Y4mDemuxer, Demuxer, Muxer, Packet};
 use mead_core::codec::opus::OpusDecoderImpl;
 use mead_core::codec::av1::Av1Encoder;
 use mead_core::codec::{AudioDecoder, VideoEncoder};
-use mead_core::{Frame, PixelFormat, Plane, ArcFrame};
 use audiopus::{SampleRate, Channels};
 use std::fs::File;
-use std::io::Write;
+use std::io::{Write, BufReader, stdin};
 use std::time::Instant;
+use std::sync::Arc;
 use output::{OutputConfig, Theme};
 
 #[derive(Parser)]
@@ -265,55 +265,87 @@ fn handle_encode(
 
     let start_time = Instant::now();
 
-    eprintln!("{}", theme.info(&format!("Encoding {} -> {} (codec: {})", input, output, codec)));
+    if !config.quiet {
+        eprintln!("{}", theme.info(&format!("Encoding {} -> {} (codec: {})", input, output, codec)));
+    }
 
-    // For MVP: Generate a test pattern (solid color frames)
-    // TODO: Add video decoding from input file in future
-    let width = 1280;
-    let height = 720;
-    let fps = 30;
-    let num_frames = 100; // Generate 100 test frames
+    // Open Y4M input (file or stdin)
+    let mut demuxer: Y4mDemuxer<Box<dyn std::io::Read>> = if input == "-" {
+        Y4mDemuxer::new(Box::new(stdin()) as Box<dyn std::io::Read>)?
+    } else {
+        let file = File::open(input)?;
+        Y4mDemuxer::new(Box::new(BufReader::new(file)) as Box<dyn std::io::Read>)?
+    };
+
+    // Get video parameters from Y4M
+    let width = demuxer.width();
+    let height = demuxer.height();
+    let (fps_num, fps_den) = demuxer.framerate();
+
+    if !config.quiet {
+        eprintln!(
+            "{}",
+            theme.info(&format!(
+                "Input: {}x{} @ {}/{} fps ({:?})",
+                width, height, fps_num, fps_den, demuxer.pixel_format()
+            ))
+        );
+    }
 
     // Create AV1 encoder
     let mut encoder = Av1Encoder::new(width, height)?;
 
     // Create IVF muxer
     let output_file = File::create(output)?;
-    let mut muxer = IvfMuxer::new(output_file, width as u16, height as u16, fps, 1)?;
+    let mut muxer = IvfMuxer::new(
+        output_file,
+        width as u16,
+        height as u16,
+        fps_num as u32,
+        fps_den as u32,
+    )?;
 
-    // Create progress bar
+    // Create progress bar (indeterminate if stdin, since we don't know frame count)
     let pb = if config.show_progress() {
-        Some(output::create_progress_bar(num_frames, "Encoding"))
+        if input == "-" {
+            Some(output::create_spinner("Encoding"))
+        } else {
+            // For files, we could estimate but Y4M doesn't have frame count in header
+            Some(output::create_spinner("Encoding"))
+        }
     } else {
         None
     };
 
-    // Generate and encode test frames
-    for frame_idx in 0..num_frames {
-        // Generate a simple test pattern (gray frame)
-        let frame = generate_test_frame(width, height, frame_idx)?;
+    // Read and encode frames from Y4M
+    let mut frame_count = 0u64;
+    while let Some(frame) = demuxer.read_frame()? {
+        // Wrap frame in Arc for zero-copy
+        let arc_frame = Arc::new(frame);
 
         // Encode frame
-        encoder.send_frame(Some(frame))?;
+        encoder.send_frame(Some(arc_frame))?;
 
         // Receive encoded packets
         while let Some(packet_data) = encoder.receive_packet()? {
             let packet = Packet {
                 stream_index: 0,
                 data: packet_data,
-                pts: Some(frame_idx as i64),
+                pts: Some(frame_count as i64),
                 dts: None,
-                is_keyframe: frame_idx == 0,  // First frame is keyframe
+                is_keyframe: frame_count == 0,
             };
             muxer.write_packet(packet)?;
         }
 
+        frame_count += 1;
+
+        // Update progress
         if let Some(ref pb) = pb {
-            pb.inc(1);
-            if frame_idx % 10 == 0 {
+            if frame_count % 10 == 0 {
                 let elapsed = start_time.elapsed();
-                let fps_actual = (frame_idx + 1) as f64 / elapsed.as_secs_f64();
-                pb.set_message(format!("{:.1} fps", fps_actual));
+                let fps_actual = frame_count as f64 / elapsed.as_secs_f64();
+                pb.set_message(format!("{} frames ({:.1} fps)", frame_count, fps_actual));
             }
         }
     }
@@ -324,7 +356,7 @@ fn handle_encode(
         let packet = Packet {
             stream_index: 0,
             data: packet_data,
-            pts: Some(num_frames as i64),
+            pts: Some(frame_count as i64),
             dts: None,
             is_keyframe: false,
         };
@@ -339,14 +371,14 @@ fn handle_encode(
     muxer.finalize()?;
 
     let elapsed = start_time.elapsed();
-    let actual_fps = num_frames as f64 / elapsed.as_secs_f64();
+    let actual_fps = frame_count as f64 / elapsed.as_secs_f64();
 
     if !config.quiet {
         eprintln!(
             "{}",
             theme.success(&format!(
                 "Encoded {} frames to {} in {} ({:.1} fps)",
-                num_frames,
+                frame_count,
                 output,
                 output::format_duration(elapsed),
                 actual_fps
@@ -355,32 +387,4 @@ fn handle_encode(
     }
 
     Ok(())
-}
-
-/// Generate a simple test frame (gray color with animated brightness)
-fn generate_test_frame(width: u32, height: u32, frame_idx: u64) -> Result<ArcFrame> {
-    use std::sync::Arc;
-
-    // Create frame with YUV420p format
-    let mut frame = Frame::new(width, height, PixelFormat::Yuv420p);
-
-    // Animate brightness (cycles from 64 to 192)
-    let brightness = 128 + ((frame_idx % 100) as i32 - 50);
-    let brightness = brightness.clamp(64, 192) as u8;
-
-    let planes = frame.planes_mut();
-
-    // Fill Y plane (luma) with animated brightness
-    for pixel in planes[0].data_mut() {
-        *pixel = brightness;
-    }
-
-    // Fill U and V planes (chroma) with neutral gray (128 = neutral)
-    for plane in &mut planes[1..=2] {
-        for pixel in plane.data_mut() {
-            *pixel = 128;
-        }
-    }
-
-    Ok(Arc::new(frame))
 }

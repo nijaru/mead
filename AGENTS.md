@@ -2,7 +2,7 @@
 
 **M**emory-safe **E**ncoding **A**nd **D**ecoding
 
-A modern, safe media processing toolkit written in Rust, designed to prevent the memory safety vulnerabilities that plague traditional media libraries like FFmpeg.
+A media processing toolkit focused on safety and modern codecs.
 
 ## Project Structure
 
@@ -55,7 +55,13 @@ cargo test --workspace
 
 # Run CLI
 cargo run -p mead -- info video.mp4
-cargo run -p mead -- encode input.mp4 -o output.mp4 --codec av1
+cargo run -p mead -- decode input.mp4 -o output.pcm
+
+# Encode (Y4M → AV1)
+cargo run -p mead -- encode input.y4m -o output.ivf --codec av1
+
+# Professional workflow (ffmpeg piping)
+ffmpeg -i input.mp4 -f yuv4mpegpipe - | cargo run -p mead -- encode - -o output.ivf --codec av1
 
 # Check (fast, no codegen)
 cargo check
@@ -119,23 +125,29 @@ cargo publish -p mead
 
 **IMPORTANT**: We are staying on 0.0.x versions for a long time. Not ready for 0.1.0 until core functionality is solid and well-tested. Version bumps happen only when explicitly instructed.
 
-**Phase**: Phase 2b (Production CLI UX) - **COMPLETE** ✅
+**Phase**: Phase 2d (Y4M Input Support) - **COMPLETE** ✅
 
-Latest work:
+Latest work (2025-11-06):
 - Phase 1: Complete (MP4 streaming, AV1 encoder, SOTA patterns)
-- Phase 2a: Started (Opus decoder, AAC placeholder, audio demuxing)
-- Phase 2b: **Complete** (Production CLI UX with progress bars, colors, human formatting)
-- 25 tests passing (21 core + 4 output), zero warnings
+- Phase 2a: Complete (Opus decoder, AAC placeholder, audio demuxing)
+- Phase 2b: Complete (Production CLI UX with progress bars, colors, human formatting)
+- Phase 2c: Complete (IVF muxer, encode pipeline)
+- Phase 2d: **Complete** (Y4M demuxer, full transcode, stdin piping)
+- 34 tests passing (30 core + 4 output), zero warnings
 
-**Phase 2b Achievements:**
-✅ Progress bars with indicatif (real-time sample count during decode)
-✅ Colored output with console (success=green, error=red)
-✅ Human-readable formatting (HumanBytes, HumanDuration)
-✅ TTY detection (auto-disable progress when piped)
-✅ Scripting flags: --quiet, --json, --no-color
-✅ Output separation: data → stdout, logs → stderr
-✅ Theme system for consistent colored output
-✅ NO_COLOR environment variable support
+**Phase 2d Achievements:**
+✅ Y4M demuxer for raw YUV input (YUV420p, YUV422p, YUV444p)
+✅ Full transcode pipeline: Y4M → AV1 → IVF
+✅ Stdin support for piped workflows: `ffmpeg -f yuv4mpegpipe - | mead encode -`
+✅ Real video transcoding at 25-48 fps (640x480 test pattern)
+✅ Valid IVF output playable in VLC, ffmpeg, dav1d
+✅ Professional workflow integration with ffmpeg
+
+**Previous Achievements (Phase 2b/2c):**
+✅ Production CLI UX (progress bars, colors, human formatting)
+✅ IVF muxer for AV1 output
+✅ Progress bars with real-time fps tracking
+✅ TTY detection, scripting flags (--quiet, --json, --no-color)
 
 CLI now has production-quality UX matching modern Rust tools.
 
@@ -145,18 +157,18 @@ See **ai/research/cli_ux_best_practices.md** for CLI UX research.
 
 ## Project Goals
 
-1. **Memory Safety First**: Eliminate buffer overflows, use-after-free, and other memory safety bugs that plague FFmpeg
-2. **Modern Codecs**: Focus on widely-used formats (AV1, H.264, AAC, Opus) not legacy codec sprawl
+1. **Memory Safety**: Pure Rust implementation with memory-safe APIs and streaming I/O
+2. **Modern Codecs**: Focus on contemporary formats (AV1, H.264, AAC, Opus)
 3. **Clean Architecture**: Modular design with clear separation between containers, codecs, and pipeline
-4. **Production Ready**: Comprehensive error handling, logging, and fuzzing from day one
+4. **Production Ready**: Comprehensive error handling, logging, and testing from day one
 
 ## Safety Approach
 
-- Pure Rust libraries: `rav1e`, `rav1d`, `mp4parse-rust`, `symphonia`
-- Safe bindings for mature C libraries where necessary (OpenH264)
-- NO unsafe FFmpeg bindings
-- Fuzzing integrated in CI from day 1
-- `#![forbid(unsafe_code)]` enforced in safe modules
+- Pure Rust libraries: `rav1e`, `mp4parse-rust`, `symphonia`, `y4m`
+- Safe bindings for mature C libraries where necessary
+- `#![forbid(unsafe_code)]` enforced in mead-core
+- Streaming I/O to prevent resource exhaustion
+- Zero-copy frame handling with Arc<Frame>
 
 ## Links
 

@@ -4,9 +4,9 @@
 | Version | 0.0.0 (staying on 0.0.x for long time, not ready for 0.1.0) | 2025-11-05 |
 | Published | crates.io: mead, mead-core (v0.0.0 placeholder) | 2025-11-05 |
 | GitHub | https://github.com/nijaru/mead | 2025-11-05 |
-| Phase | Phase 2b (Production CLI UX) - **COMPLETE** | 2025-11-06 |
-| Code Status | Full encode pipeline working (test pattern → AV1 → IVF) | 2025-11-06 |
-| Tests | 32 tests passing (27 core + 4 output + 1 doc) | 2025-11-06 |
+| Phase | Phase 2d (Y4M Input Support) - **COMPLETE** | 2025-11-06 |
+| Code Status | Full transcode working (Y4M → AV1 → IVF, stdin piping) | 2025-11-06 |
+| Tests | 34 tests passing (30 core + 4 output) | 2025-11-06 |
 | Architecture | mp4 crate streaming, MediaSource, Arc<Frame>, send-receive | 2025-11-05 |
 
 ## What Worked
@@ -84,16 +84,18 @@
 
 ## Active Work
 
-**Phase 2b/2c Complete** (Production CLI UX + Encode Pipeline) - 2025-11-06:
+**Phase 2b/2c/2d Complete** (Production CLI + Encode + Y4M) - 2025-11-06:
 - ✅ Production CLI UX (indicatif, console, colors, progress bars)
 - ✅ IVF muxer for AV1 output (simple container, widely supported)
-- ✅ Encode command working (generates test patterns, encodes to AV1, writes IVF)
-- ✅ Full encode pipeline: Frame generation → AV1 encoding → IVF muxing
+- ✅ Y4M demuxer for raw YUV input (YUV420p, YUV422p, YUV444p)
+- ✅ Full transcode pipeline: Y4M → AV1 → IVF
+- ✅ Stdin support for piped workflows: `ffmpeg -f yuv4mpegpipe - | mead encode -`
+- ✅ Real video transcoding (tested with ffmpeg → mead → IVF at 25-48 fps)
 - ✅ Progress bars with real-time fps tracking
-- ✅ All 32 tests passing, zero clippy warnings
-- ✅ Can produce valid IVF files playable in VLC/ffmpeg
+- ✅ All 34 tests passing (30 core + 4 output), zero clippy warnings
+- ✅ Produces valid IVF files playable in VLC/ffmpeg/dav1d
 
-**Next**: Add video decoding from MP4 input (Phase 2d) or Phase 3 (more codecs)
+**Next**: Phase 3 (H.264/H.265 codecs) or Phase 4 (WebM/MKV containers)
 
 ## Known Limitations
 
@@ -104,19 +106,22 @@
    - Decoder planned for future phase
    - H.264/H.265 in Phase 3
 
-3. **No encode CLI command**: Reading works, writing doesn't
-   - Can read MP4 files and extract samples
-   - Cannot transcode to AV1 yet (need muxing support)
-   - Phase 2 will add full encode pipeline
+3. ✅ **Encode CLI command working**: Full transcode pipeline
+   - Reads Y4M input (file or stdin)
+   - Encodes to AV1 with rav1e
+   - Writes IVF output
+   - Professional workflow: `ffmpeg | mead | player`
 
 4. **AAC decoder incomplete**: Placeholder implementation
    - Opus decoder works, AAC needs ADTS parsing
    - Audio extraction works for Opus-encoded audio
    - Full AAC support needs additional work
 
-5. **Limited container support**: MP4 only
-   - WebM/MKV in Phase 4
-   - Streaming protocols in Phase 5
+5. **Limited container support**: MP4 (read), IVF (write), Y4M (read)
+   - Input: MP4 demuxer, Y4M demuxer
+   - Output: IVF muxer
+   - WebM/MKV planned for Phase 4
+   - Streaming protocols (HLS, DASH) in Phase 5
 
 ## Blockers
 
@@ -174,5 +179,6 @@ fn receive_packet(&mut self) -> Result<Option<Vec<u8>>>;
 ## References
 
 - **Research**: ai/research/rust_media_api_design.md (SOTA patterns from symphonia, rav1e, mp4parse)
+- **Research**: ai/research/cli_ux_design.md (Modern CLI/library UX patterns vs FFmpeg)
 - **Refactoring Plan**: ai/REFACTORING_PLAN.md (detailed fixes for 6 issues)
 - **Decisions**: ai/DECISIONS.md (architectural choices)

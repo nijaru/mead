@@ -29,6 +29,7 @@ aligned-vec = "0.6"
 num_cpus = "1.16"
 symphonia = { version = "0.5", features = ["aac", "mp3", "wav"] }
 audiopus = "0.2"
+y4m = "0.8"  # YUV4MPEG2 format support
 
 # Async runtime
 tokio = { version = "1.0", features = ["full"] }

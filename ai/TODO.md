@@ -1,11 +1,30 @@
-## High Priority - Phase 3 or complete Phase 2a
-- [ ] Wire up CLI encode command (transcode to AV1)
-- [ ] Add AV1 decoder using rav1d
+## High Priority - Phase 3 (H.264/H.265 decoders)
+- [ ] Research H.264 decoder options (OpenH264 vs pure Rust)
+- [ ] Implement H.264 decoder integration
+- [ ] Add MP4 video demuxing (currently only metadata)
+- [ ] Full transcode: MP4 (H.264) → AV1 → IVF
 - [ ] Complete AAC decoder (ADTS parsing)
 - [ ] Add cargo-fuzz integration for container parsing
 - [ ] Set up CI/CD with GitHub Actions
 
 ## Completed (2025-11-06)
+
+### Phase 2d - Y4M Input Support
+- [x] Add y4m crate dependency
+- [x] Implement Y4mDemuxer wrapper (YUV420p, YUV422p, YUV444p)
+- [x] Wire up Y4M module in container/mod.rs
+- [x] Update encode command to accept Y4M input
+- [x] Add stdin support for piped workflows
+- [x] Test full transcode pipeline (Y4M → AV1 → IVF)
+- [x] Update documentation (README, CLAUDE.md, ai/)
+- [x] All 36 tests passing (30 core + 4 output + 2 doctests)
+
+### Phase 2c - IVF Muxer + Encode Pipeline
+- [x] Implement IVF muxer (32-byte header + 12-byte frame headers)
+- [x] Add IVF muxer tests (6 comprehensive tests)
+- [x] Wire up encode command with test pattern generation
+- [x] Test full encode pipeline (generate → encode → mux)
+- [x] Verify IVF output playable in VLC/ffmpeg
 
 ### Phase 2b - Production CLI UX
 - [x] Add indicatif dependency for progress bars
@@ -44,8 +63,8 @@
 - [x] Project structure and name reservation (v0.0.0 published)
 
 ## Backlog
-- [ ] Audio codec support (AAC, Opus) - Phase 2
-- [ ] H.264, H.265, VP9 codec support - Phase 3
+- [ ] Complete AAC decoder (ADTS parsing) - Phase 2a
+- [ ] H.264, H.265 video decoders - Phase 3
 - [ ] WebM/MKV container support - Phase 4
 - [ ] Streaming protocols (HLS, DASH, RTMP) - Phase 5
 - [ ] Documentation and examples
