@@ -1,4 +1,26 @@
-## High Priority - Phase 3 (H.264/H.265 decoders)
+## High Priority - Phase 2f (SVT-AV1 Integration) - IN PROGRESS
+- [x] Strategic decision: SVT-AV1 default, rav1e option (Servo model)
+- [x] Update project positioning (README, CLAUDE.md, DECISIONS.md)
+- [x] Create svt-av1-sys crate with FFI bindings
+- [x] Set up bindgen for SVT-AV1 3.1.2
+- [x] Create encoder module structure (trait, backend enum)
+- [ ] Implement safe SvtAv1Encoder wrapper
+  - [ ] Context initialization/cleanup
+  - [ ] Frame send/receive
+  - [ ] Config mapping (preset, resolution, etc.)
+  - [ ] Error handling
+- [ ] Add --encoder CLI flag (svt-av1 | rav1e)
+- [ ] Integrate both encoders in encode command
+- [ ] Update tests (encode with both backends)
+- [ ] Update documentation (usage examples, installation)
+
+## Next Up - Phase 2g (Preset System)
+- [ ] Add preset enum (Fast, Balanced, Quality)
+- [ ] Map presets to encoder settings (both rav1e and SVT-AV1)
+- [ ] CLI --preset flag
+- [ ] Documentation and examples
+
+## Future - Phase 3 (H.264/H.265 decoders)
 - [ ] Research H.264 decoder options (OpenH264 vs pure Rust)
 - [ ] Implement H.264 decoder integration
 - [ ] Add MP4 video demuxing (currently only metadata)
@@ -8,6 +30,19 @@
 - [ ] Set up CI/CD with GitHub Actions
 
 ## Completed (2025-11-06)
+
+### Phase 2e - AV1 Optimization + Strategic Pivot
+- [x] Implement tile parallelism in Av1Config (tile_cols, tile_rows, threads)
+- [x] Smart tile calculation (respects 256×256 minimum, powers-of-2)
+- [x] Auto-detect CPU cores with num_cpus
+- [x] Create benchmark framework (mead/benches/encode_benchmark.rs)
+- [x] Run performance benchmarks (720p, 1080p with various configs)
+- [x] Create SVT-AV1 comparison script (scripts/compare_encoders.sh)
+- [x] Benchmark rav1e vs SVT-AV1 (3-5× gap confirmed)
+- [x] Research encoder comparison and document findings
+- [x] Strategic decision: SVT-AV1 default, rav1e option
+- [x] Update all documentation with new positioning
+- [x] All 37 tests passing
 
 ### Phase 2d - Y4M Input Support
 - [x] Add y4m crate dependency

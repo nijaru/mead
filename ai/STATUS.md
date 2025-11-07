@@ -4,9 +4,9 @@
 | Version | 0.0.0 (staying on 0.0.x for long time, not ready for 0.1.0) | 2025-11-05 |
 | Published | crates.io: mead, mead-core (v0.0.0 placeholder) | 2025-11-05 |
 | GitHub | https://github.com/nijaru/mead | 2025-11-05 |
-| Phase | Phase 2e (AV1 Optimization) - **COMPLETE** | 2025-11-06 |
-| Code Status | Optimized transcode with tile parallelism (4-5× speedup) | 2025-11-06 |
-| Tests | 37 tests passing (31 core + 4 output + 2 doc) | 2025-11-06 |
+| Phase | Phase 2f (SVT-AV1 Integration) - **IN PROGRESS** | 2025-11-06 |
+| Code Status | SVT-AV1 FFI bindings complete, wrapper in progress | 2025-11-06 |
+| Tests | 38 tests passing (31 core + 4 output + 2 doc + 1 sys) | 2025-11-06 |
 | Architecture | mp4 crate streaming, MediaSource, Arc<Frame>, send-receive | 2025-11-05 |
 
 ## What Worked
@@ -86,7 +86,16 @@
 - **SVT-AV1 comparison**: Script comparing optimized rav1e vs industry standard
 - **Gap narrowed**: From 7× slower (baseline) to 3-5× slower (optimized)
 - **Research docs**: Encoder comparison, CLI UX best practices, AV1 settings
+- **Strategic pivot**: Decided on SVT-AV1 default with rav1e option (Servo model)
 - **37 tests passing**: 31 core + 4 output + 2 doc, zero warnings
+
+### Phase 2f SVT-AV1 Integration (2025-11-06) - IN PROGRESS
+- **svt-av1-sys crate**: FFI bindings using bindgen 0.72, edition 2024 compatible
+- **System library**: Finds libSvtAv1Enc 3.1.2 via pkg-config (homebrew)
+- **Architecture separation**: Bindings NOT exposed to mead-core (stays pure Rust)
+- **Encoder module**: Trait definition and backend enum created
+- **38 tests passing**: 31 core + 4 output + 2 doc + 1 sys, zero warnings
+- **Remaining**: Safe wrapper implementation, --encoder CLI flag, integration
 
 ## What Didn't Work
 
@@ -104,25 +113,27 @@
 
 ## Active Work
 
-**Phase 2b/2c/2d/2e Complete** (Production CLI + Encode + Y4M + Optimization) - 2025-11-06:
-- ✅ Production CLI UX (indicatif, console, colors, progress bars)
-- ✅ IVF muxer for AV1 output (simple container, widely supported)
-- ✅ Y4M demuxer for raw YUV input (YUV420p, YUV422p, YUV444p)
-- ✅ Full transcode pipeline: Y4M → AV1 → IVF
-- ✅ Stdin support for piped workflows: `ffmpeg -f yuv4mpegpipe - | mead encode -`
+**Phase 2f IN PROGRESS** (SVT-AV1 Integration) - 2025-11-06:
+- ✅ Strategic decision: SVT-AV1 default, rav1e option (Servo model)
+- ✅ Updated project positioning (README, CLAUDE.md, DECISIONS.md)
+- ✅ Created svt-av1-sys crate with FFI bindings
+- ✅ Bindings working with SVT-AV1 3.1.2 (bindgen 0.72, edition 2024)
+- ✅ Created encoder module structure (trait, backend enum)
+- 🚧 Safe wrapper around SVT-AV1 C API (in progress)
+- ⏳ Add --encoder CLI flag (svt-av1 | rav1e)
+- ⏳ Integrate both encoders into encode command
+- ⏳ Update tests and documentation
+
+**Previous Achievements** (Phase 2e):
 - ✅ Tile parallelism optimization (4-5× speedup)
 - ✅ Benchmark framework and SVT-AV1 comparison
-- ✅ All 37 tests passing (31 core + 4 output + 2 doc), zero clippy warnings
-- ✅ Produces valid IVF files playable in VLC/ffmpeg/dav1d
-- ✅ Documented encoder comparison (3-5× gap to SVT-AV1)
+- ✅ Research docs (encoder comparison, CLI UX, AV1 settings)
+- ✅ All 38 tests passing (31 core + 4 output + 2 doc + 1 sys)
 
-**Current**: Decide encoder strategy (rav1e only vs add SVT-AV1 as option)
-
-**Next Options**:
-- Phase 2f: Add preset system (fast/balanced/quality) to CLI
-- Phase 3: Add SVT-AV1 as optional encoder (--encoder svt-av1)
-- Phase 4: H.264/H.265 decoders
-- Phase 5: WebM/MKV containers
+**Next After 2f**:
+- Phase 2g: Add preset system (fast/balanced/quality) to CLI
+- Phase 3: H.264/H.265 decoders
+- Phase 4: WebM/MKV containers
 
 ## Known Limitations
 
