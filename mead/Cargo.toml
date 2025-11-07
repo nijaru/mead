@@ -12,6 +12,7 @@ categories.workspace = true
 
 [dependencies]
 mead-core = { version = "0.0.0", path = "../mead-core" }
+svt-av1-sys = { version = "0.0.0", path = "../svt-av1-sys" }
 anyhow.workspace = true
 clap.workspace = true
 indicatif.workspace = true

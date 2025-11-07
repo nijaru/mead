@@ -6,30 +6,8 @@
 
 pub mod svtav1;
 
-use anyhow::Result;
-use mead_core::ArcFrame;
-
-/// Video encoder trait for unified interface
-pub trait VideoEncoder {
-    /// Send a frame for encoding (None signals end of stream)
-    fn send_frame(&mut self, frame: Option<ArcFrame>) -> Result<()>;
-
-    /// Receive an encoded packet (returns None when no more packets available)
-    fn receive_packet(&mut self) -> Result<Option<Vec<u8>>>;
-
-    /// Finish encoding and flush remaining packets
-    fn finish(&mut self) -> Result<Vec<Vec<u8>>> {
-        // Send EOS
-        self.send_frame(None)?;
-
-        // Collect remaining packets
-        let mut packets = Vec::new();
-        while let Some(packet) = self.receive_packet()? {
-            packets.push(packet);
-        }
-        Ok(packets)
-    }
-}
+// Re-export the VideoEncoder trait from mead-core for unified interface
+pub use mead_core::codec::VideoEncoder;
 
 /// Encoder selection
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

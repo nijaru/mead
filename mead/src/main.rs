@@ -1,17 +1,19 @@
+mod encoders;
 mod output;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use mead_core::container::{mp4::Mp4Demuxer, ivf::IvfMuxer, y4m::Y4mDemuxer, Demuxer, Muxer, Packet};
 use mead_core::codec::opus::OpusDecoderImpl;
-use mead_core::codec::av1::Av1Encoder;
-use mead_core::codec::{AudioDecoder, VideoEncoder};
+use mead_core::codec::av1::Av1Encoder as Rav1eEncoder;
+use mead_core::codec::AudioDecoder;
 use audiopus::{SampleRate, Channels};
 use std::fs::File;
 use std::io::{Write, BufReader, stdin};
 use std::time::Instant;
 use std::sync::Arc;
 use output::{OutputConfig, Theme};
+use encoders::{EncoderBackend, VideoEncoder, svtav1::{SvtAv1Config, SvtAv1Encoder}};
 
 #[derive(Parser)]
 #[command(name = "mead")]
@@ -51,6 +53,9 @@ enum Commands {
         /// Video codec (av1, h264)
         #[arg(long, default_value = "av1")]
         codec: String,
+        /// Encoder backend (svt-av1, rav1e)
+        #[arg(long, default_value = "svt-av1")]
+        encoder: String,
     },
     /// Decode video/audio
     Decode {
@@ -85,8 +90,8 @@ fn main() -> Result<()> {
             }
             Ok(())
         }
-        Commands::Encode { input, output, codec } => {
-            handle_encode(&input, &output, &codec, &output_config, &theme)?;
+        Commands::Encode { input, output, codec, encoder } => {
+            handle_encode(&input, &output, &codec, &encoder, &output_config, &theme)?;
             Ok(())
         }
         Commands::Decode { input, output } => {
@@ -256,6 +261,7 @@ fn handle_encode(
     input: &str,
     output: &str,
     codec: &str,
+    encoder_name: &str,
     config: &OutputConfig,
     theme: &Theme,
 ) -> Result<()> {
@@ -263,10 +269,14 @@ fn handle_encode(
         return Err(anyhow::anyhow!("Only AV1 codec is supported currently"));
     }
 
+    // Parse encoder backend
+    let backend = EncoderBackend::from_str(encoder_name)
+        .ok_or_else(|| anyhow::anyhow!("Unknown encoder: {}. Use 'svt-av1' or 'rav1e'", encoder_name))?;
+
     let start_time = Instant::now();
 
     if !config.quiet {
-        eprintln!("{}", theme.info(&format!("Encoding {} -> {} (codec: {})", input, output, codec)));
+        eprintln!("{}", theme.info(&format!("Encoding {} -> {} (codec: {}, encoder: {})", input, output, codec, backend.as_str())));
     }
 
     // Open Y4M input (file or stdin)
@@ -292,8 +302,23 @@ fn handle_encode(
         );
     }
 
-    // Create AV1 encoder
-    let mut encoder = Av1Encoder::new(width, height)?;
+    // Create encoder based on selection
+    let mut encoder: Box<dyn VideoEncoder> = match backend {
+        EncoderBackend::SvtAv1 => {
+            let svt_config = SvtAv1Config {
+                width,
+                height,
+                fps_num: fps_num as u32,
+                fps_den: fps_den as u32,
+                preset: 8, // Balanced preset
+                ..Default::default()
+            };
+            Box::new(SvtAv1Encoder::new(svt_config)?)
+        }
+        EncoderBackend::Rav1e => {
+            Box::new(Rav1eEncoder::new(width, height)?)
+        }
+    };
 
     // Create IVF muxer
     let output_file = File::create(output)?;

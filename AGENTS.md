@@ -2,7 +2,7 @@
 
 **M**emory-safe **E**ncoding **A**nd **D**ecoding
 
-A media processing toolkit focused on safety and modern codecs.
+Modern AV1 encoding with Rust ergonomics. Fast by default (SVT-AV1), pure Rust option available (rav1e).
 
 ## Project Structure
 
@@ -125,31 +125,29 @@ cargo publish -p mead
 
 **IMPORTANT**: We are staying on 0.0.x versions for a long time. Not ready for 0.1.0 until core functionality is solid and well-tested. Version bumps happen only when explicitly instructed.
 
-**Phase**: Phase 2d (Y4M Input Support) - **COMPLETE** ✅
+**Phase**: Phase 2e (AV1 Optimization + Strategic Pivot) - **COMPLETE** ✅
 
 Latest work (2025-11-06):
 - Phase 1: Complete (MP4 streaming, AV1 encoder, SOTA patterns)
 - Phase 2a: Complete (Opus decoder, AAC placeholder, audio demuxing)
 - Phase 2b: Complete (Production CLI UX with progress bars, colors, human formatting)
 - Phase 2c: Complete (IVF muxer, encode pipeline)
-- Phase 2d: **Complete** (Y4M demuxer, full transcode, stdin piping)
-- 34 tests passing (30 core + 4 output), zero warnings
+- Phase 2d: Complete (Y4M demuxer, full transcode, stdin piping)
+- Phase 2e: **Complete** (Tile parallelism, SVT-AV1 strategy)
+- 37 tests passing (31 core + 4 output + 2 doc), zero warnings
 
-**Phase 2d Achievements:**
-✅ Y4M demuxer for raw YUV input (YUV420p, YUV422p, YUV444p)
-✅ Full transcode pipeline: Y4M → AV1 → IVF
-✅ Stdin support for piped workflows: `ffmpeg -f yuv4mpegpipe - | mead encode -`
-✅ Real video transcoding at 25-48 fps (640x480 test pattern)
-✅ Valid IVF output playable in VLC, ffmpeg, dav1d
-✅ Professional workflow integration with ffmpeg
+**Phase 2e Achievements:**
+✅ Tile parallelism optimization (4-5× speedup: 720p 8.81→37.96 fps, 1080p 4.00→18.50 fps)
+✅ Benchmark framework for performance testing
+✅ SVT-AV1 comparison (3-5× gap, down from 7× baseline)
+✅ Strategic decision: SVT-AV1 default, rav1e option
+✅ Research docs (encoder comparison, CLI UX, AV1 settings)
 
-**Previous Achievements (Phase 2b/2c):**
-✅ Production CLI UX (progress bars, colors, human formatting)
-✅ IVF muxer for AV1 output
-✅ Progress bars with real-time fps tracking
-✅ TTY detection, scripting flags (--quiet, --json, --no-color)
-
-CLI now has production-quality UX matching modern Rust tools.
+**Previous Achievements:**
+✅ Y4M input with full color space support (420p/422p/444p)
+✅ Full transcode pipeline at real-time speeds
+✅ Production CLI UX matching modern Rust tools
+✅ IVF output playable in VLC/ffmpeg/dav1d
 
 See **ai/STATUS.md** for current state and blockers.
 See **ai/PLAN.md** for full roadmap and technical architecture.
@@ -157,18 +155,30 @@ See **ai/research/cli_ux_best_practices.md** for CLI UX research.
 
 ## Project Goals
 
-1. **Memory Safety**: Pure Rust implementation with memory-safe APIs and streaming I/O
-2. **Modern Codecs**: Focus on contemporary formats (AV1, H.264, AAC, Opus)
-3. **Clean Architecture**: Modular design with clear separation between containers, codecs, and pipeline
+1. **Competitive Performance**: Fast by default with SVT-AV1 (100+ fps), pure Rust option available
+2. **Modern UX**: Better CLI than ffmpeg (presets, progress bars, sane defaults)
+3. **Clean Architecture**: Modular design with safe Rust core, C bindings where beneficial
 4. **Production Ready**: Comprehensive error handling, logging, and testing from day one
+5. **Incremental Safety**: Servo/Firefox model - start hybrid, move to more Rust over time
 
 ## Safety Approach
 
-- Pure Rust libraries: `rav1e`, `mp4parse-rust`, `symphonia`, `y4m`
-- Safe bindings for mature C libraries where necessary
-- `#![forbid(unsafe_code)]` enforced in mead-core
+**Hybrid Strategy** (like Servo → Firefox):
+- **mead-core**: `#![forbid(unsafe_code)]` - pure Rust API remains safe
+- **mead CLI**: C bindings where necessary for performance/ecosystem
+- **Default encoder**: SVT-AV1 (production-proven, 0 CVEs in 4 years)
+- **Pure Rust option**: rav1e available via `--encoder rav1e`
+- **Future path**: Incremental adoption of safe Rust alternatives as they mature
+
+Libraries:
+- Pure Rust: `rav1e` (encoder), `mp4` (demuxer), `symphonia` (audio), `y4m` (YUV)
+- Safe C bindings: SVT-AV1 (default encoder, battle-tested)
+- Future: `rav1d` decoder (safe Rust dav1d port), pure Rust H.264/H.265 as they mature
+
+Architecture:
 - Streaming I/O to prevent resource exhaustion
 - Zero-copy frame handling with Arc<Frame>
+- Safe Rust APIs in mead-core (library consumers get safety guarantees)
 
 ## Links
 
