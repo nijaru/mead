@@ -4,9 +4,9 @@
 | Version | 0.0.0 (staying on 0.0.x for long time, not ready for 0.1.0) | 2025-11-05 |
 | Published | crates.io: mead, mead-core (v0.0.0 placeholder) | 2025-11-05 |
 | GitHub | https://github.com/nijaru/mead | 2025-11-05 |
-| Phase | Phase 2d (Y4M Input Support) - **COMPLETE** | 2025-11-06 |
-| Code Status | Full transcode working (Y4M → AV1 → IVF, stdin piping) | 2025-11-06 |
-| Tests | 34 tests passing (30 core + 4 output) | 2025-11-06 |
+| Phase | Phase 2e (AV1 Optimization) - **COMPLETE** | 2025-11-06 |
+| Code Status | Optimized transcode with tile parallelism (4-5× speedup) | 2025-11-06 |
+| Tests | 37 tests passing (31 core + 4 output + 2 doc) | 2025-11-06 |
 | Architecture | mp4 crate streaming, MediaSource, Arc<Frame>, send-receive | 2025-11-05 |
 
 ## What Worked
@@ -68,6 +68,26 @@
 - **Working output**: Produces valid .ivf files viewable in VLC, ffmpeg, dav1d
 - **32 tests passing**: 27 core + 4 output + 1 doc test, zero warnings
 
+### Phase 2d Y4M Input (2025-11-06) - COMPLETE
+- **Y4M demuxer**: Pure Rust YUV4MPEG2 format parser using y4m crate 0.8
+- **Color space support**: YUV420p, YUV422p, YUV444p (C420jpeg, C422jpeg, C444jpeg)
+- **Stdin piping**: Read Y4M from stdin for ffmpeg pipeline integration
+- **Full transcode**: Y4M → AV1 → IVF complete workflow
+- **Professional workflow**: `ffmpeg -f yuv4mpegpipe - | mead encode - | player`
+- **Real video encoding**: Tested with 640×480 test patterns at 25-48 fps
+- **34 tests passing**: 30 core + 4 output, zero warnings
+
+### Phase 2e AV1 Optimization (2025-11-06) - COMPLETE
+- **Tile parallelism**: Added tile_cols, tile_rows, threads config to Av1Config
+- **Smart tile calculation**: Respects 256×256 minimum, powers-of-2 constraint
+- **Auto-detection**: CPU cores with num_cpus, optimal tile configuration
+- **Performance**: 720p 8.81→37.96 fps (4.3×), 1080p 4.00→18.50 fps (4.6×)
+- **Benchmark framework**: Comprehensive suite (mead/benches/encode_benchmark.rs)
+- **SVT-AV1 comparison**: Script comparing optimized rav1e vs industry standard
+- **Gap narrowed**: From 7× slower (baseline) to 3-5× slower (optimized)
+- **Research docs**: Encoder comparison, CLI UX best practices, AV1 settings
+- **37 tests passing**: 31 core + 4 output + 2 doc, zero warnings
+
 ## What Didn't Work
 
 ### Initial Attempts
@@ -84,18 +104,25 @@
 
 ## Active Work
 
-**Phase 2b/2c/2d Complete** (Production CLI + Encode + Y4M) - 2025-11-06:
+**Phase 2b/2c/2d/2e Complete** (Production CLI + Encode + Y4M + Optimization) - 2025-11-06:
 - ✅ Production CLI UX (indicatif, console, colors, progress bars)
 - ✅ IVF muxer for AV1 output (simple container, widely supported)
 - ✅ Y4M demuxer for raw YUV input (YUV420p, YUV422p, YUV444p)
 - ✅ Full transcode pipeline: Y4M → AV1 → IVF
 - ✅ Stdin support for piped workflows: `ffmpeg -f yuv4mpegpipe - | mead encode -`
-- ✅ Real video transcoding (tested with ffmpeg → mead → IVF at 25-48 fps)
-- ✅ Progress bars with real-time fps tracking
-- ✅ All 34 tests passing (30 core + 4 output), zero clippy warnings
+- ✅ Tile parallelism optimization (4-5× speedup)
+- ✅ Benchmark framework and SVT-AV1 comparison
+- ✅ All 37 tests passing (31 core + 4 output + 2 doc), zero clippy warnings
 - ✅ Produces valid IVF files playable in VLC/ffmpeg/dav1d
+- ✅ Documented encoder comparison (3-5× gap to SVT-AV1)
 
-**Next**: Phase 3 (H.264/H.265 codecs) or Phase 4 (WebM/MKV containers)
+**Current**: Decide encoder strategy (rav1e only vs add SVT-AV1 as option)
+
+**Next Options**:
+- Phase 2f: Add preset system (fast/balanced/quality) to CLI
+- Phase 3: Add SVT-AV1 as optional encoder (--encoder svt-av1)
+- Phase 4: H.264/H.265 decoders
+- Phase 5: WebM/MKV containers
 
 ## Known Limitations
 
@@ -180,5 +207,8 @@ fn receive_packet(&mut self) -> Result<Option<Vec<u8>>>;
 
 - **Research**: ai/research/rust_media_api_design.md (SOTA patterns from symphonia, rav1e, mp4parse)
 - **Research**: ai/research/cli_ux_design.md (Modern CLI/library UX patterns vs FFmpeg)
+- **Research**: ai/research/av1_encoder_settings.md (rav1e vs SVT-AV1 performance analysis)
+- **Research**: ai/research/encoder_comparison.md (Benchmark results and recommendations)
+- **Summary**: ai/OPTIMIZATION_SUMMARY.md (Phase 2e tile parallelism work)
 - **Refactoring Plan**: ai/REFACTORING_PLAN.md (detailed fixes for 6 issues)
 - **Decisions**: ai/DECISIONS.md (architectural choices)
