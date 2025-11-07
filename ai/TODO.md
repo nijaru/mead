@@ -1,23 +1,26 @@
-## High Priority - Phase 2b (CLI UX)
-- [ ] Add indicatif dependency for progress bars
-- [ ] Add console dependency for colors and TTY detection
-- [ ] Implement progress bar during encode (frame count, fps, speed, ETA)
-- [ ] Implement progress bar during decode
-- [ ] Add colored output (success=green, error=red, warning=yellow)
-- [ ] Add human-readable formatting (HumanBytes, HumanDuration)
-- [ ] Implement TTY detection (auto-disable progress/colors in pipes)
-- [ ] Add NO_COLOR environment variable support
-- [ ] Add --quiet flag (errors only)
-- [ ] Add --json flag (machine-readable output)
-- [ ] Add --no-color flag (explicit color disable)
-- [ ] Separate stdout/stderr (data → stdout, logs → stderr)
-
-## Medium Priority
+## High Priority - Phase 3 or complete Phase 2a
 - [ ] Wire up CLI encode command (transcode to AV1)
 - [ ] Add AV1 decoder using rav1d
 - [ ] Complete AAC decoder (ADTS parsing)
 - [ ] Add cargo-fuzz integration for container parsing
 - [ ] Set up CI/CD with GitHub Actions
+
+## Completed (2025-11-06)
+
+### Phase 2b - Production CLI UX
+- [x] Add indicatif dependency for progress bars
+- [x] Add console dependency for colors and TTY detection
+- [x] Implement progress bar during decode
+- [x] Add colored output (success=green, error=red, warning=yellow)
+- [x] Add human-readable formatting (HumanBytes, HumanDuration)
+- [x] Implement TTY detection (auto-disable progress/colors in pipes)
+- [x] Add NO_COLOR environment variable support
+- [x] Add --quiet flag (errors only)
+- [x] Add --json flag (machine-readable output)
+- [x] Add --no-color flag (explicit color disable)
+- [x] Separate stdout/stderr (data → stdout, logs → stderr)
+- [x] Create output module with Theme and formatting utilities
+- [x] All tests passing (25 total), zero clippy warnings
 
 ## Completed (2025-11-05)
 

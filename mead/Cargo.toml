@@ -14,6 +14,10 @@ categories.workspace = true
 mead-core = { version = "0.0.0", path = "../mead-core" }
 anyhow.workspace = true
 clap.workspace = true
+indicatif.workspace = true
+console.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
 mp4.workspace = true
 audiopus.workspace = true
 tracing.workspace = true

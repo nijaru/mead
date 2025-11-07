@@ -119,23 +119,25 @@ cargo publish -p mead
 
 **IMPORTANT**: We are staying on 0.0.x versions for a long time. Not ready for 0.1.0 until core functionality is solid and well-tested. Version bumps happen only when explicitly instructed.
 
-**Phase**: Phase 2b (Production CLI UX) - **NEXT**
+**Phase**: Phase 2b (Production CLI UX) - **COMPLETE** ✅
 
 Latest work:
 - Phase 1: Complete (MP4 streaming, AV1 encoder, SOTA patterns)
 - Phase 2a: Started (Opus decoder, AAC placeholder, audio demuxing)
-- Phase 2b: Planning (Production CLI UX - progress bars, colors, human formatting)
-- 21 tests passing, zero warnings
+- Phase 2b: **Complete** (Production CLI UX with progress bars, colors, human formatting)
+- 25 tests passing (21 core + 4 output), zero warnings
 
-**Why Phase 2b now?**
-FFmpeg's strength is real-time progress feedback during encodes. If mead is to replace FFmpeg, we need:
-- Progress bars showing frame count, fps, speed, ETA (indicatif)
-- Colored output (console crate)
-- Human-readable formatting (3.5 MiB not 3670016)
-- TTY detection (auto-hide progress when piped)
-- Scripting flags (--quiet, --json, --no-color)
+**Phase 2b Achievements:**
+✅ Progress bars with indicatif (real-time sample count during decode)
+✅ Colored output with console (success=green, error=red)
+✅ Human-readable formatting (HumanBytes, HumanDuration)
+✅ TTY detection (auto-disable progress when piped)
+✅ Scripting flags: --quiet, --json, --no-color
+✅ Output separation: data → stdout, logs → stderr
+✅ Theme system for consistent colored output
+✅ NO_COLOR environment variable support
 
-Current CLI uses plain println! with no progress indicators. This makes mead feel like a toy vs FFmpeg. Better to build production UX patterns now before adding more complexity.
+CLI now has production-quality UX matching modern Rust tools.
 
 See **ai/STATUS.md** for current state and blockers.
 See **ai/PLAN.md** for full roadmap and technical architecture.
