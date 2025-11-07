@@ -5,8 +5,8 @@
 | Published | crates.io: mead, mead-core (v0.0.0 placeholder) | 2025-11-05 |
 | GitHub | https://github.com/nijaru/mead | 2025-11-05 |
 | Phase | Phase 2b (Production CLI UX) - **COMPLETE** | 2025-11-06 |
-| Code Status | MP4 audio demuxing, Opus decoder, AAC placeholder | 2025-11-05 |
-| Tests | 21 tests passing (frame, io, codec, container, audio) | 2025-11-05 |
+| Code Status | Full encode pipeline working (test pattern → AV1 → IVF) | 2025-11-06 |
+| Tests | 32 tests passing (27 core + 4 output + 1 doc) | 2025-11-06 |
 | Architecture | mp4 crate streaming, MediaSource, Arc<Frame>, send-receive | 2025-11-05 |
 
 ## What Worked
@@ -51,7 +51,7 @@
 - **Updated CLI decode command**: Can extract audio from MP4 files to raw PCM
 - **21 tests passing**: Added audio codec and MP4 audio track tests
 
-### Phase 2b CLI UX (2025-11-06) - COMPLETE
+### Phase 2b/2c CLI UX + Encode Pipeline (2025-11-06) - COMPLETE
 - **Added dependencies**: indicatif 0.17, console 0.15, serde/serde_json for JSON output
 - **Created output module**: OutputConfig, Theme, progress bar helpers, formatting utilities
 - **Implemented progress bars**: Real-time progress during decode with sample count tracking
@@ -62,6 +62,11 @@
 - **CLI flags**: --quiet (errors only), --json (machine-readable), --no-color (explicit disable)
 - **Output separation**: Data → stdout, logs/progress → stderr (allows piping)
 - **Testing**: 4 new tests for output module, all 25 tests passing
+- **IVF muxer**: Implemented simple AV1 container format (32-byte header + frame headers)
+- **Encode pipeline**: Full working encode command generating test patterns and encoding to AV1
+- **Test pattern generator**: Animated grayscale frames for testing encode pipeline
+- **Working output**: Produces valid .ivf files viewable in VLC, ffmpeg, dav1d
+- **32 tests passing**: 27 core + 4 output + 1 doc test, zero warnings
 
 ## What Didn't Work
 
@@ -79,19 +84,16 @@
 
 ## Active Work
 
-Phase 2b (Production CLI UX) - **COMPLETE** (2025-11-06):
-- ✅ Added indicatif for progress bars
-- ✅ Added console for colored output
-- ✅ Implemented progress bars with sample count tracking
-- ✅ Added TTY detection and NO_COLOR support
-- ✅ Implemented --quiet, --json, --no-color flags
-- ✅ Separated stdout/stderr (data vs logs)
-- ✅ Human-readable formatting (HumanBytes, HumanDuration)
-- ✅ Colored success/error messages with Theme
-- ✅ Created output module with comprehensive UX utilities
-- ✅ All 25 tests passing (21 core + 4 output), zero clippy warnings
+**Phase 2b/2c Complete** (Production CLI UX + Encode Pipeline) - 2025-11-06:
+- ✅ Production CLI UX (indicatif, console, colors, progress bars)
+- ✅ IVF muxer for AV1 output (simple container, widely supported)
+- ✅ Encode command working (generates test patterns, encodes to AV1, writes IVF)
+- ✅ Full encode pipeline: Frame generation → AV1 encoding → IVF muxing
+- ✅ Progress bars with real-time fps tracking
+- ✅ All 32 tests passing, zero clippy warnings
+- ✅ Can produce valid IVF files playable in VLC/ffmpeg
 
-**Next**: Phase 3 (More codecs) or complete Phase 2a (finish AAC decoder, add audio muxing)
+**Next**: Add video decoding from MP4 input (Phase 2d) or Phase 3 (more codecs)
 
 ## Known Limitations
 

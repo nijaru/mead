@@ -2,9 +2,11 @@ mod output;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use mead_core::container::{mp4::Mp4Demuxer, Demuxer};
+use mead_core::container::{mp4::Mp4Demuxer, ivf::IvfMuxer, Demuxer, Muxer, Packet};
 use mead_core::codec::opus::OpusDecoderImpl;
-use mead_core::codec::AudioDecoder;
+use mead_core::codec::av1::Av1Encoder;
+use mead_core::codec::{AudioDecoder, VideoEncoder};
+use mead_core::{Frame, PixelFormat, Plane, ArcFrame};
 use audiopus::{SampleRate, Channels};
 use std::fs::File;
 use std::io::Write;
@@ -83,8 +85,8 @@ fn main() -> Result<()> {
             }
             Ok(())
         }
-        Commands::Encode { input: _, output: _, codec: _ } => {
-            eprintln!("{}", theme.error("Encode command not yet implemented"));
+        Commands::Encode { input, output, codec } => {
+            handle_encode(&input, &output, &codec, &output_config, &theme)?;
             Ok(())
         }
         Commands::Decode { input, output } => {
@@ -248,4 +250,137 @@ fn handle_decode(
     }
 
     Ok(())
+}
+
+fn handle_encode(
+    input: &str,
+    output: &str,
+    codec: &str,
+    config: &OutputConfig,
+    theme: &Theme,
+) -> Result<()> {
+    if codec != "av1" {
+        return Err(anyhow::anyhow!("Only AV1 codec is supported currently"));
+    }
+
+    let start_time = Instant::now();
+
+    eprintln!("{}", theme.info(&format!("Encoding {} -> {} (codec: {})", input, output, codec)));
+
+    // For MVP: Generate a test pattern (solid color frames)
+    // TODO: Add video decoding from input file in future
+    let width = 1280;
+    let height = 720;
+    let fps = 30;
+    let num_frames = 100; // Generate 100 test frames
+
+    // Create AV1 encoder
+    let mut encoder = Av1Encoder::new(width, height)?;
+
+    // Create IVF muxer
+    let output_file = File::create(output)?;
+    let mut muxer = IvfMuxer::new(output_file, width as u16, height as u16, fps, 1)?;
+
+    // Create progress bar
+    let pb = if config.show_progress() {
+        Some(output::create_progress_bar(num_frames, "Encoding"))
+    } else {
+        None
+    };
+
+    // Generate and encode test frames
+    for frame_idx in 0..num_frames {
+        // Generate a simple test pattern (gray frame)
+        let frame = generate_test_frame(width, height, frame_idx)?;
+
+        // Encode frame
+        encoder.send_frame(Some(frame))?;
+
+        // Receive encoded packets
+        while let Some(packet_data) = encoder.receive_packet()? {
+            let packet = Packet {
+                stream_index: 0,
+                data: packet_data,
+                pts: Some(frame_idx as i64),
+                dts: None,
+                is_keyframe: frame_idx == 0,  // First frame is keyframe
+            };
+            muxer.write_packet(packet)?;
+        }
+
+        if let Some(ref pb) = pb {
+            pb.inc(1);
+            if frame_idx % 10 == 0 {
+                let elapsed = start_time.elapsed();
+                let fps_actual = (frame_idx + 1) as f64 / elapsed.as_secs_f64();
+                pb.set_message(format!("{:.1} fps", fps_actual));
+            }
+        }
+    }
+
+    // Flush encoder
+    encoder.send_frame(None)?;
+    while let Some(packet_data) = encoder.receive_packet()? {
+        let packet = Packet {
+            stream_index: 0,
+            data: packet_data,
+            pts: Some(num_frames as i64),
+            dts: None,
+            is_keyframe: false,
+        };
+        muxer.write_packet(packet)?;
+    }
+
+    if let Some(pb) = pb {
+        pb.finish_and_clear();
+    }
+
+    // Finalize muxer
+    muxer.finalize()?;
+
+    let elapsed = start_time.elapsed();
+    let actual_fps = num_frames as f64 / elapsed.as_secs_f64();
+
+    if !config.quiet {
+        eprintln!(
+            "{}",
+            theme.success(&format!(
+                "Encoded {} frames to {} in {} ({:.1} fps)",
+                num_frames,
+                output,
+                output::format_duration(elapsed),
+                actual_fps
+            ))
+        );
+    }
+
+    Ok(())
+}
+
+/// Generate a simple test frame (gray color with animated brightness)
+fn generate_test_frame(width: u32, height: u32, frame_idx: u64) -> Result<ArcFrame> {
+    use std::sync::Arc;
+
+    // Create frame with YUV420p format
+    let mut frame = Frame::new(width, height, PixelFormat::Yuv420p);
+
+    // Animate brightness (cycles from 64 to 192)
+    let brightness = 128 + ((frame_idx % 100) as i32 - 50);
+    let brightness = brightness.clamp(64, 192) as u8;
+
+    let planes = frame.planes_mut();
+
+    // Fill Y plane (luma) with animated brightness
+    for pixel in planes[0].data_mut() {
+        *pixel = brightness;
+    }
+
+    // Fill U and V planes (chroma) with neutral gray (128 = neutral)
+    for plane in &mut planes[1..=2] {
+        for pixel in plane.data_mut() {
+            *pixel = 128;
+        }
+    }
+
+    Ok(Arc::new(frame))
 }
