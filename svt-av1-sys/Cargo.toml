@@ -1,0 +1,19 @@
+[package]
+name = "svt-av1-sys"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+description = "FFI bindings to SVT-AV1 encoder"
+repository = "https://github.com/nijaru/mead"
+
+# This is a -sys crate, unsafe is required for FFI
+# NOT exposed to mead-core (which stays #![forbid(unsafe_code)])
+# Only used by mead CLI for performance
+
+[build-dependencies]
+bindgen = "0.72"
+pkg-config = "0.3"
+
+[dependencies]
+# No runtime dependencies - just FFI bindings
