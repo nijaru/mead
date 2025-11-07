@@ -209,6 +209,93 @@ Y4mDemuxer::new(File::open("input.y4m")?)?  // File input
 
 ---
 
+## 2025-11-06: SVT-AV1 Default with rav1e Option (Phase 2e Strategic Decision)
+
+**Context**: After implementing tile parallelism optimization, rav1e achieves 20-40 fps while SVT-AV1 reaches 100-150 fps. Users trying mead vs ffmpeg would experience 5× slower encoding, making adoption difficult despite superior UX. Initial positioning as "pure Rust only" creates competitive disadvantage.
+
+**Decision**: Use SVT-AV1 as default encoder, offer rav1e as `--encoder rav1e` option
+
+**Strategic Framing**: Pivot from "pure Rust media tool" to "modern AV1 tool with Rust ergonomics"
+
+**CLI Design**:
+```bash
+# Default: Fast (SVT-AV1, 100+ fps)
+mead encode input.y4m -o output.ivf
+
+# Pure Rust option (rav1e, 20-40 fps)
+mead encode input.y4m -o output.ivf --encoder rav1e
+
+# Future: More encoders
+mead encode input.y4m -o output.ivf --encoder x264
+```
+
+**Rationale**:
+- **Competitive performance**: Must match ffmpeg speed to gain adoption (100+ fps)
+- **SVT-AV1 is safe**: Zero CVEs in 4 years, heavily fuzzed by Netflix/Intel/YouTube
+- **Honest positioning**: Don't die on "pure Rust" hill, compete on UX instead
+- **User choice preserved**: Pure Rust still available for those who want it
+- **Better first impression**: Users won't immediately bounce due to slowness
+- **Servo model**: Hybrid approach, incrementally move to more Rust over time
+- **mead-core stays safe**: `#![forbid(unsafe_code)]` remains, bindings in CLI only
+
+**Performance Data**:
+| Resolution | rav1e (optimized) | SVT-AV1 | Gap |
+|------------|-------------------|---------|-----|
+| 720p | 41.55 fps | 142.29 fps | 3.42× |
+| 1080p | 20.14 fps | 108.35 fps | 5.37× |
+
+**Tradeoffs**:
+| Pro | Con |
+|-----|-----|
+| Competitive with ffmpeg performance | C dependency (libsvtav1) |
+| Real adoption opportunity | Weakens "pure Rust" positioning |
+| SVT-AV1 battle-tested (Netflix, YouTube) | Requires system library or vendoring |
+| User choice (can still use rav1e) | Bindings maintenance burden |
+| Honest safety claims (SVT-AV1 is safe!) | Installation complexity on some systems |
+
+**Architecture Impact**:
+- **mead-core**: Remains `#![forbid(unsafe_code)]`, pure Rust API
+- **mead CLI**: Can use C bindings where necessary for performance
+- **Incremental path**: Add safe Rust implementations over time
+  - rav1e already available (pure Rust)
+  - Future: rav1d decoder (safe Rust dav1d port)
+  - Future: pure Rust H.264/H.265 as they mature
+
+**Positioning Change**:
+```markdown
+# Before: "Memory-safe media processing"
+# Problem: Implies existing tools are unsafe (controversial)
+# Problem: 5× slower = dead on arrival
+
+# After: "Modern AV1 encoding with Rust ergonomics"
+# Benefits:
+- Fast by default (SVT-AV1)
+- Pure Rust option available (rav1e)
+- Better UX than ffmpeg (presets, progress bars)
+- Modern CLI patterns (rg/fd/bat style)
+```
+
+**Implementation Plan**:
+1. Evaluate SVT-AV1 Rust bindings (`svt-av1-enc`, `svt-av1-rs`)
+2. Add `--encoder` flag to CLI (`svt-av1` default, `rav1e` option)
+3. Keep rav1e fully supported (tests, benchmarks, documentation)
+4. Update README/CLAUDE.md with new positioning
+5. Document installation (system svtav1 or vendored)
+
+**Evidence**:
+- ai/research/encoder_comparison.md (benchmark results)
+- ai/research/av1_encoder_settings.md (performance analysis)
+- ai/OPTIMIZATION_SUMMARY.md (tile parallelism work)
+
+**Analogy**: Servo/Firefox model
+- Servo: Pure Rust browser engine experiments
+- Firefox: Integrated Servo components incrementally (Quantum project)
+- mead: Start hybrid, incrementally adopt more pure Rust as ecosystem matures
+
+**Commits**: TBD (implementation in progress)
+
+---
+
 <!-- Template:
 
 ## YYYY-MM-DD: Decision Title
