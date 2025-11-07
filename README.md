@@ -1,18 +1,20 @@
 # mead
 
-**M**emory-safe **E**ncoding **A**nd **D**ecoding
+Modern AV1 encoding with Rust ergonomics.
 
-A media processing toolkit focused on safety and modern codecs.
+Fast, user-friendly media processing with production-ready performance and modern CLI design.
 
 ## Features
 
-- **AV1 encoding** with rav1e
+- **Fast by default** - Production-grade SVT-AV1 encoder (100+ fps)
+- **Pure Rust option** - Memory-safe rav1e encoder available
+- **Better UX** - Progress bars, presets, sane defaults
+- **Modern CLI** - Works like ripgrep/fd/bat, not ffmpeg
 - **Y4M input** for raw video processing
 - **IVF output** for AV1 streams
 - **MP4 demuxing** with streaming support
 - **Audio decoding** (Opus, AAC)
 - **Stdin/stdout piping** for integration with existing tools
-- **Memory safety** through pure Rust implementation
 
 ## Installation
 
@@ -33,11 +35,14 @@ cargo build --release
 ### Encode video to AV1
 
 ```bash
-# Encode Y4M file to AV1/IVF
-mead encode input.y4m -o output.ivf --codec av1
+# Fast encoding with SVT-AV1 (default, 100+ fps)
+mead encode input.y4m -o output.ivf
+
+# Pure Rust with rav1e (20-40 fps, memory-safe)
+mead encode input.y4m -o output.ivf --encoder rav1e
 
 # Pipe from ffmpeg
-ffmpeg -i input.mp4 -f yuv4mpegpipe - | mead encode - -o output.ivf --codec av1
+ffmpeg -i input.mp4 -f yuv4mpegpipe - | mead encode - -o output.ivf
 ```
 
 ### Get file information
@@ -61,12 +66,12 @@ mead decode audio.mp4 -o output.pcm
 | Y4M    | ✅   | ⏳    |
 | WebM   | ⏳   | ⏳    |
 
-| Codec  | Decode | Encode |
-|--------|--------|--------|
-| AV1    | ⏳     | ✅     |
-| Opus   | ✅     | ⏳     |
-| AAC    | 🚧     | ⏳     |
-| H.264  | ⏳     | ⏳     |
+| Codec      | Decode | Encode | Notes |
+|------------|--------|--------|-------|
+| AV1        | ⏳     | ✅     | SVT-AV1 (default), rav1e (pure Rust) |
+| Opus       | ✅     | ⏳     | |
+| AAC        | 🚧     | ⏳     | |
+| H.264      | ⏳     | ⏳     | |
 
 ✅ Implemented | 🚧 Partial | ⏳ Planned
 
@@ -75,9 +80,12 @@ mead decode audio.mp4 -o output.pcm
 Early development. Core video encoding pipeline is functional. Suitable for experimentation and testing, not yet recommended for production use.
 
 **Current capabilities:**
-- Transcode Y4M to AV1/IVF at 25-48 fps (640x480)
+- AV1 encoding at 100+ fps (SVT-AV1) or 20-40 fps (rav1e)
+- Y4M input with full color space support (420p/422p/444p)
+- IVF output for AV1 streams
 - Extract Opus audio from MP4
 - Stream processing with constant memory usage
+- Progress bars and modern CLI UX
 - Professional workflow integration via stdin/stdout
 
 **Roadmap:**
