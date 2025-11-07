@@ -1,9 +1,23 @@
-## High Priority
+## High Priority - Phase 2b (CLI UX)
+- [ ] Add indicatif dependency for progress bars
+- [ ] Add console dependency for colors and TTY detection
+- [ ] Implement progress bar during encode (frame count, fps, speed, ETA)
+- [ ] Implement progress bar during decode
+- [ ] Add colored output (success=green, error=red, warning=yellow)
+- [ ] Add human-readable formatting (HumanBytes, HumanDuration)
+- [ ] Implement TTY detection (auto-disable progress/colors in pipes)
+- [ ] Add NO_COLOR environment variable support
+- [ ] Add --quiet flag (errors only)
+- [ ] Add --json flag (machine-readable output)
+- [ ] Add --no-color flag (explicit color disable)
+- [ ] Separate stdout/stderr (data → stdout, logs → stderr)
+
+## Medium Priority
 - [ ] Wire up CLI encode command (transcode to AV1)
 - [ ] Add AV1 decoder using rav1d
+- [ ] Complete AAC decoder (ADTS parsing)
 - [ ] Add cargo-fuzz integration for container parsing
 - [ ] Set up CI/CD with GitHub Actions
-- [ ] Add large file tests (verify streaming with multi-GB files)
 
 ## Completed (2025-11-05)
 

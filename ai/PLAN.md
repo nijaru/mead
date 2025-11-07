@@ -7,8 +7,9 @@ Build a memory-safe media processing toolkit in Rust that prevents the memory sa
 
 | Phase | Status | Deliverables | Success Criteria |
 |-------|--------|--------------|------------------|
-| Phase 1 | ← CURRENT | MP4 demuxer/muxer + AV1 encode/decode | Parse MP4, encode/decode AV1 frames, CLI commands work |
-| Phase 2 | Planned | Audio codec support (AAC, Opus) | Handle audio streams, sync with video |
+| Phase 1 | COMPLETE | MP4 demuxer/muxer + AV1 encode/decode | Parse MP4, encode/decode AV1 frames, CLI commands work |
+| Phase 2a | IN PROGRESS | Audio codec support (AAC, Opus) | Handle audio streams, sync with video |
+| Phase 2b | ← NEXT | Production CLI UX | Progress bars, colors, human formatting, TTY detection |
 | Phase 3 | Planned | H.264, H.265, VP9 codecs | Cover 80%+ of streaming use cases |
 | Phase 4 | Planned | WebM/MKV container support | Alternative container formats |
 | Phase 5 | Future | Streaming protocols (HLS, DASH, RTMP) | Network streaming ingress/egress |
@@ -17,7 +18,8 @@ Build a memory-safe media processing toolkit in Rust that prevents the memory sa
 
 | Must Complete | Before Starting | Why |
 |---------------|-----------------|-----|
-| Phase 1 (MP4 + AV1) | Phase 2 (Audio) | Need container parsing before audio muxing |
+| Phase 1 (MP4 + AV1) | Phase 2a (Audio) | Need container parsing before audio muxing |
+| Phase 2b (CLI UX) | Phase 3 (More codecs) | Good UX patterns needed before adding complexity |
 | Phase 2 (Audio) | Phase 3 (H.264/H.265) | Audio sync complexity - learn on AV1 first |
 | Phase 1-3 (Codecs/containers) | Phase 5 (Streaming) | Need solid encode/decode before network protocols |
 | Fuzzing setup | Any container work | Container parsers are high-risk attack surface |
@@ -32,30 +34,35 @@ Build a memory-safe media processing toolkit in Rust that prevents the memory sa
 | **H.264** | OpenH264 safe bindings | Cisco-provided, patent-free baseline |
 | **Safety** | `#![forbid(unsafe_code)]` in core | Compile-time guarantee, exceptions require justification |
 | **Fuzzing** | cargo-fuzz from day 1 | Parsers are attack surface - continuous fuzzing |
-| **CLI** | clap + tracing | Standard Rust tools, good UX |
+| **CLI** | clap + tracing + indicatif + console | Standard Rust tools, production UX with progress bars |
 | **Async** | tokio (network only) | Sync I/O for files, async for streaming |
 
-## Phase 1 Details (Current)
+## Phase 2b Details (Next)
 
 **Scope:**
-- MP4 container: demux (read), mux (write), metadata extraction
-- AV1 codec: encode frames, decode frames
-- CLI: `mead info`, `mead encode`, `mead decode` commands
-- Error handling: comprehensive Result types, clear error messages
-- Fuzzing: mp4parse corpus, basic CI integration
+- Progress bars with indicatif (frame count, fps, speed, ETA)
+- Colored output with console crate (errors=red, success=green, warnings=yellow)
+- Human-readable formatting (HumanBytes, HumanDuration from indicatif)
+- TTY detection (auto-disable progress/colors in pipes)
+- Real-time metrics (fps, speed relative to realtime, bitrate)
+- Scripting support (--quiet, --json, --no-color flags)
+- Output separation (progress/logs → stderr, data → stdout)
 
-**Not in Phase 1:**
-- Audio (Phase 2)
-- Other codecs (Phase 3+)
-- Streaming protocols (Phase 5)
-- Hardware acceleration (future optimization)
-
-**Success = Published v0.1.0:**
-```bash
-mead info video.mp4          # Show metadata
-mead encode in.mp4 -o out.mp4 --codec av1  # Transcode to AV1
-mead decode video.mp4 -o frames/  # Extract frames
+**Example output:**
 ```
+$ mead encode input.mp4 -o output.webm --codec av1
+[00:02:35] ████████████████████░░░░░░░░ 1234/2000 frames 60fps 1.2x ⏱ 00:01:05
+Bitrate: 2.5 Mbit/s | Size: 45.2 MiB
+
+✓ Encoded successfully in 2m 35s
+```
+
+**Success criteria:**
+- Progress bars work in TTY, hidden when piped
+- Colors auto-disabled in non-TTY or with NO_COLOR
+- --json flag produces machine-readable output
+- Real-time fps/speed metrics during encode
+- ETA accurate within 20% for long encodes
 
 ## Out of Scope
 

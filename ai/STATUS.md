@@ -4,7 +4,7 @@
 | Version | 0.0.0 (staying on 0.0.x for long time, not ready for 0.1.0) | 2025-11-05 |
 | Published | crates.io: mead, mead-core (v0.0.0 placeholder) | 2025-11-05 |
 | GitHub | https://github.com/nijaru/mead | 2025-11-05 |
-| Phase | Phase 2a (Audio Codecs) - **IN PROGRESS** | 2025-11-05 |
+| Phase | Phase 2b (Production CLI UX) - **NEXT** | 2025-11-06 |
 | Code Status | MP4 audio demuxing, Opus decoder, AAC placeholder | 2025-11-05 |
 | Tests | 21 tests passing (frame, io, codec, container, audio) | 2025-11-05 |
 | Architecture | mp4 crate streaming, MediaSource, Arc<Frame>, send-receive | 2025-11-05 |
@@ -44,12 +44,18 @@
 - **Created large file simulation**: Test with 1MB+ inputs for memory behavior
 - **18 tests passing**: Added 2 new tests for large file handling
 
-### Phase 2a Audio Codecs (Latest 2025-11-05)
+### Phase 2a Audio Codecs (2025-11-05)
 - **Added Opus decoder**: Using audiopus crate for Opus audio decoding
 - **Added AAC decoder placeholder**: Symphonia-based AAC decoder (needs ADTS parsing)
 - **Extended MP4 demuxer**: Added audio track filtering and selection methods
 - **Updated CLI decode command**: Can extract audio from MP4 files to raw PCM
 - **21 tests passing**: Added audio codec and MP4 audio track tests
+
+### Phase 2b CLI UX Analysis (2025-11-06)
+- **Current state**: Plain println!, no progress bars, no colors, basic output
+- **Decision**: Prioritize production CLI UX before more codecs
+- **Why**: FFmpeg's strength is real-time progress during encodes. Table stakes for media tool.
+- **Research**: Modern Rust CLIs use indicatif + console + TTY detection as standard
 
 ## What Didn't Work
 
@@ -67,33 +73,40 @@
 
 ## Active Work
 
-Phase 2a (Audio Codecs) - **IN PROGRESS**:
-- ✅ Added Opus decoder using audiopus crate
-- ✅ Added AAC decoder placeholder (needs ADTS parsing)
-- ✅ Extended MP4 demuxer with audio track methods
-- ✅ Updated CLI decode command for audio extraction
-- ✅ All tests passing (21 total)
+Phase 2b (Production CLI UX) - **NEXT**:
+- [ ] Add indicatif for progress bars
+- [ ] Add console for colored output
+- [ ] Implement real-time encoding metrics (fps, speed, ETA)
+- [ ] Add TTY detection and NO_COLOR support
+- [ ] Implement --quiet, --json, --no-color flags
+- [ ] Separate stdout/stderr (data vs logs)
+- [ ] Human-readable formatting (bytes, durations)
 
-**Next**: Complete AAC decoder implementation or add audio muxing
+**Why now**: Current CLI feels like a toy vs FFmpeg. Need production UX before adding more features.
 
 ## Known Limitations
 
-1. **AV1 encoder only**: No decoder yet
+1. **CLI UX not production-ready**: Basic output, no progress bars
+   - No real-time fps/speed/ETA during encodes
+   - No colored output or human-readable formatting
+   - Phase 2b will add production UX
+
+2. **AV1 encoder only**: No decoder yet
    - Encoder works with send-receive pattern
    - Decoder planned for future phase
    - H.264/H.265 in Phase 3
 
-2. **No encode CLI command**: Reading works, writing doesn't
+3. **No encode CLI command**: Reading works, writing doesn't
    - Can read MP4 files and extract samples
    - Cannot transcode to AV1 yet (need muxing support)
    - Phase 2 will add full encode pipeline
 
-3. **AAC decoder incomplete**: Placeholder implementation
+4. **AAC decoder incomplete**: Placeholder implementation
    - Opus decoder works, AAC needs ADTS parsing
    - Audio extraction works for Opus-encoded audio
    - Full AAC support needs additional work
 
-4. **Limited container support**: MP4 only
+5. **Limited container support**: MP4 only
    - WebM/MKV in Phase 4
    - Streaming protocols in Phase 5
 

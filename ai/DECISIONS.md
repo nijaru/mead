@@ -118,6 +118,53 @@
 
 ---
 
+## 2025-11-06: Production CLI UX (Phase 2b)
+
+**Context**: Current CLI uses plain println!, no progress bars, no colors, no human-readable formatting. FFmpeg's strength is real-time feedback during long encodes (frame count, fps, speed, ETA). If mead is to replace FFmpeg, users need production-quality UX.
+
+**Decision**: Add Phase 2b (Production CLI UX) before completing more codecs
+
+**Requirements**:
+- Progress bars during encode/decode operations (indicatif)
+- Colored output with TTY detection (console crate)
+- Human-readable formatting (bytes, durations, speeds)
+- Real-time metrics: fps, speed (x realtime), bitrate, ETA
+- Respect NO_COLOR environment variable
+- Output separation: progress/logs → stderr, data → stdout
+- Scripting flags: --quiet, --json, --no-color
+
+**Rationale**:
+- Encoding can take hours - users need confidence tool isn't frozen
+- FFmpeg's real-time progress is table stakes for media tools
+- Modern Rust CLIs use indicatif (industry standard)
+- Without progress bars, mead feels like a toy vs FFmpeg
+- Better to build good UX patterns early than retrofit later
+
+**Tradeoffs**:
+| Pro | Con |
+|-----|-----|
+| Professional UX matching FFmpeg | Delays codec development |
+| Users trust the tool during long ops | Additional dependencies |
+| Good patterns for future features | More complex output handling |
+| Essential for production use | - |
+
+**Implementation**:
+```rust
+// Dependencies
+indicatif = "0.17"  // Progress bars
+console = "0.15"    // Colors, TTY detection
+
+// Example usage
+let pb = ProgressBar::new(total_frames);
+pb.set_style(ProgressStyle::with_template(
+  "[{elapsed_precise}] {bar:40.cyan/blue} {pos}/{len} {msg} {per_sec} ETA: {eta}"
+)?);
+```
+
+**Evidence**: ai/research/cli_ux_best_practices.md
+
+---
+
 <!-- Template:
 
 ## YYYY-MM-DD: Decision Title
